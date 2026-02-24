@@ -18,12 +18,12 @@ import (
 const shortlistSize = 8
 
 type Planner struct {
-	fsq *foursquare.Client
+	fsq foursquare.PlaceSearcher
 	llm *llm.Client
 	cfg *config.Config
 }
 
-func New(fsq *foursquare.Client, llmClient *llm.Client, cfg *config.Config) *Planner {
+func New(fsq foursquare.PlaceSearcher, llmClient *llm.Client, cfg *config.Config) *Planner {
 	return &Planner{fsq: fsq, llm: llmClient, cfg: cfg}
 }
 

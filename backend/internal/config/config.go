@@ -13,6 +13,7 @@ type Config struct {
 	OllamaModel      string
 	SearchRadius     int
 	Debug            bool
+	RedisURL         string
 }
 
 func Load() (*Config, error) {
@@ -45,6 +46,11 @@ func Load() (*Config, error) {
 
 	debug := os.Getenv("DEBUG") == "true" || os.Getenv("DEBUG") == "1"
 
+	redisURL := os.Getenv("REDIS_URL")
+	if redisURL == "" {
+		redisURL = "localhost:6379"
+	}
+
 	return &Config{
 		Port:             port,
 		FoursquareAPIKey: apiKey,
@@ -52,5 +58,6 @@ func Load() (*Config, error) {
 		OllamaModel:      ollamaModel,
 		SearchRadius:     radius,
 		Debug:            debug,
+		RedisURL:         redisURL,
 	}, nil
 }

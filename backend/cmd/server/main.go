@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"time"
 
+	"github.com/danielmnuoz/travel-tomorrow/backend/internal/cache"
 	"github.com/danielmnuoz/travel-tomorrow/backend/internal/config"
 	"github.com/danielmnuoz/travel-tomorrow/backend/internal/foursquare"
 	"github.com/danielmnuoz/travel-tomorrow/backend/internal/handler"
@@ -20,8 +22,10 @@ func main() {
 
 	// Initialize service clients
 	fsqClient := foursquare.NewClient(cfg.FoursquareAPIKey, nil, cfg.Debug)
+	rdb := cache.NewRedisClient(cfg.RedisURL)
+	cachedFsq := cache.NewCachedSearcher(fsqClient, rdb, 7*24*time.Hour)
 	llmClient := llm.NewClient(cfg.OllamaURL, cfg.OllamaModel, nil)
-	p := planner.New(fsqClient, llmClient, cfg)
+	p := planner.New(cachedFsq, llmClient, cfg)
 	h := handler.New(p)
 
 	// Routes

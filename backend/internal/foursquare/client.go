@@ -54,6 +54,11 @@ func CategoryIDsForInterests(interests []string) []string {
 	return ids
 }
 
+// PlaceSearcher is the interface for searching places. *Client satisfies it.
+type PlaceSearcher interface {
+	SearchPlaces(ctx context.Context, lat, lng float64, radius int, categoryIDs []string, limit int) ([]model.Candidate, error)
+}
+
 // Client wraps the Foursquare Places API.
 type Client struct {
 	apiKey     string
