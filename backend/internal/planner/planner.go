@@ -65,7 +65,7 @@ func (p *Planner) Plan(ctx context.Context, req model.ItineraryRequest) (*model.
 	}
 
 	if p.cfg.Debug {
-		log.Printf("[DEBUG] planner: user prompt sent to LLM:\n%s", userPrompt)
+		log.Printf("[DEBUG] planner: user prompt sent to LLM (%d bytes)", len(userPrompt))
 	}
 
 	// 6. Call LLM
@@ -76,7 +76,7 @@ func (p *Planner) Plan(ctx context.Context, req model.ItineraryRequest) (*model.
 	}
 
 	if p.cfg.Debug {
-		log.Printf("[DEBUG] planner: raw LLM response:\n%s", rawJSON)
+		log.Printf("[DEBUG] planner: raw LLM response (%d bytes)", len(rawJSON))
 	}
 
 	// 7. Parse LLM response
