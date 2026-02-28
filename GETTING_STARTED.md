@@ -54,7 +54,7 @@ You should see output like:
 The backend needs the Foursquare API key. Check that `.env.local` exists in the project root and has:
 
 ```bash
-FOUR_SQUARE_PLACE_API_KEY=fsq3blahblah84qORg8kM
+FOUR_SQUARE_PLACE_API_KEY=XXX
 ```
 
 If it's missing or empty, add it. This file is **not committed** to git for security.
