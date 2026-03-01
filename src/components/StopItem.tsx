@@ -1,18 +1,18 @@
 import type { PlaceStop } from "@/types/itinerary";
 
-const categoryStyles: Record<string, { emoji: string; color: string }> = {
-  food: { emoji: "\u{1F374}", color: "#E07A5F" },
-  activity: { emoji: "\u{1F9ED}", color: "#3D85C6" },
-  cafe: { emoji: "\u{2615}", color: "#8B6914" },
-  landmark: { emoji: "\u{2B50}", color: "#4A7C59" },
-  coffee: { emoji: "\u{2615}", color: "#8B6914" },
-  museum: { emoji: "\u{1F3DB}", color: "#7B61A6" },
-  park: { emoji: "\u{1F333}", color: "#4A7C59" },
-  bar: { emoji: "\u{1F378}", color: "#C4475B" },
-  shopping: { emoji: "\u{1F6CD}", color: "#D4A03C" },
+const categoryColors: Record<string, string> = {
+  food: "#E07A5F",
+  activity: "#3D85C6",
+  cafe: "#8B6914",
+  landmark: "#4A7C59",
+  coffee: "#8B6914",
+  museum: "#7B61A6",
+  park: "#4A7C59",
+  bar: "#C4475B",
+  shopping: "#D4A03C",
 };
 
-const defaultStyle = { emoji: "\u{1F4CD}", color: "#6B7280" };
+const defaultColor = "#6B7280";
 
 const timeLabels: Record<string, string> = {
   morning: "Morning",
@@ -21,17 +21,17 @@ const timeLabels: Record<string, string> = {
 };
 
 export default function StopItem({ stop }: { stop: PlaceStop }) {
-  const style = categoryStyles[stop.category.toLowerCase()] ?? defaultStyle;
+  const color = categoryColors[stop.category.toLowerCase()] ?? defaultColor;
   const timeLabel = timeLabels[stop.time_slot.toLowerCase()] ?? stop.time_slot;
 
   return (
     <div className="flex items-start gap-3 py-3 group">
       {/* Icon */}
       <div
-        className="w-9 h-9 rounded-xl flex items-center justify-center text-base shrink-0 mt-0.5"
-        style={{ backgroundColor: style.color + "15", color: style.color }}
+        className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
+        style={{ backgroundColor: color + "15" }}
       >
-        {style.emoji}
+        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
       </div>
 
       {/* Content */}
