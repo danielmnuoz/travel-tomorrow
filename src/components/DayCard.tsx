@@ -1,10 +1,10 @@
 "use client";
 
-import type { Day } from "@/data/mock-itinerary";
+import type { DayPlan } from "@/types/itinerary";
 import StopItem from "@/components/StopItem";
 
 interface DayCardProps {
-  day: Day;
+  day: DayPlan;
   isSelected: boolean;
   onSelect: () => void;
   onViewDetails: () => void;
@@ -36,7 +36,7 @@ export default function DayCard({
                   : "text-[var(--color-text-light)]"
               }`}
             >
-              {day.title}
+              Day {day.day_number}
             </span>
             {isSelected && (
               <span className="w-2 h-2 rounded-full bg-[var(--color-primary)] animate-pulse" />
@@ -49,13 +49,13 @@ export default function DayCard({
       </div>
 
       <p className="text-sm text-[var(--color-text-muted)] mb-4 leading-relaxed">
-        {day.description}
+        {day.theme}
       </p>
 
       {/* Stops */}
       <div className="divide-y divide-[var(--color-border)]/50">
         {day.stops.map((stop) => (
-          <StopItem key={stop.id} stop={stop} />
+          <StopItem key={stop.fsq_id} stop={stop} />
         ))}
       </div>
 

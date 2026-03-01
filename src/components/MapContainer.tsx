@@ -1,12 +1,12 @@
 "use client";
 
-import type { Stop } from "@/data/mock-itinerary";
+import type { PlaceStop } from "@/types/itinerary";
 
 interface MapContainerProps {
-  stops: Stop[];
+  stops: PlaceStop[];
 }
 
-function buildEmbedUrl(stops: Stop[]): string {
+function buildEmbedUrl(stops: PlaceStop[]): string {
   const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY;
 
   if (stops.length === 0) {
@@ -14,14 +14,14 @@ function buildEmbedUrl(stops: Stop[]): string {
   }
 
   if (stops.length === 1) {
-    return `https://www.google.com/maps/embed/v1/place?key=${key}&q=${stops[0].lat},${stops[0].lng}&zoom=15`;
+    return `https://www.google.com/maps/embed/v1/place?key=${key}&q=${stops[0].latitude},${stops[0].longitude}&zoom=15`;
   }
 
-  const origin = `${stops[0].lat},${stops[0].lng}`;
-  const destination = `${stops[stops.length - 1].lat},${stops[stops.length - 1].lng}`;
+  const origin = `${stops[0].latitude},${stops[0].longitude}`;
+  const destination = `${stops[stops.length - 1].latitude},${stops[stops.length - 1].longitude}`;
   const waypoints = stops
     .slice(1, -1)
-    .map((s) => `${s.lat},${s.lng}`)
+    .map((s) => `${s.latitude},${s.longitude}`)
     .join("|");
 
   let url = `https://www.google.com/maps/embed/v1/directions?key=${key}&origin=${origin}&destination=${destination}&mode=walking`;

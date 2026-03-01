@@ -1,13 +1,13 @@
 "use client";
 
-import type { Day, Stop } from "@/data/mock-itinerary";
+import type { DayPlan, PlaceStop } from "@/types/itinerary";
 
 interface DayDetailViewProps {
-  day: Day;
+  day: DayPlan;
   onClose: () => void;
 }
 
-const timeConfig = {
+const timeConfig: Record<string, { label: string; icon: string; color: string; bg: string }> = {
   morning: {
     label: "Morning",
     icon: "\u{1F305}",
@@ -32,12 +32,11 @@ function TimeSection({
   timeOfDay,
   stops,
 }: {
-  timeOfDay: Stop["timeOfDay"];
-  stops: Stop[];
+  timeOfDay: string;
+  stops: PlaceStop[];
 }) {
   const config = timeConfig[timeOfDay];
-
-  if (stops.length === 0) return null;
+  if (!config || stops.length === 0) return null;
 
   return (
     <div className="relative">
@@ -57,7 +56,7 @@ function TimeSection({
       {/* Stops */}
       <div className="ml-5 pl-5 border-l-2 border-[var(--color-border)] space-y-4 pb-6">
         {stops.map((stop, idx) => (
-          <div key={stop.id} className="relative">
+          <div key={stop.fsq_id} className="relative">
             {/* Timeline dot */}
             <div
               className="absolute -left-[27px] top-1 w-3 h-3 rounded-full border-2 border-white"
@@ -72,7 +71,7 @@ function TimeSection({
                   Stop {idx + 1}
                 </span>
                 <span className="text-xs px-2 py-0.5 rounded-full bg-white/60 text-[var(--color-text-muted)] capitalize">
-                  {stop.type}
+                  {stop.category}
                 </span>
               </div>
               <h4 className="font-semibold text-sm text-[var(--color-text)] mb-1">
@@ -90,9 +89,9 @@ function TimeSection({
 }
 
 export default function DayDetailView({ day, onClose }: DayDetailViewProps) {
-  const morningStops = day.stops.filter((s) => s.timeOfDay === "morning");
-  const afternoonStops = day.stops.filter((s) => s.timeOfDay === "afternoon");
-  const eveningStops = day.stops.filter((s) => s.timeOfDay === "evening");
+  const morningStops = day.stops.filter((s) => s.time_slot.toLowerCase() === "morning");
+  const afternoonStops = day.stops.filter((s) => s.time_slot.toLowerCase() === "afternoon");
+  const eveningStops = day.stops.filter((s) => s.time_slot.toLowerCase() === "evening");
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center animate-fade-in">
@@ -108,7 +107,7 @@ export default function DayDetailView({ day, onClose }: DayDetailViewProps) {
         <div className="sticky top-0 z-10 bg-white border-b border-[var(--color-border)]/50 px-6 py-4 flex items-center justify-between">
           <div>
             <span className="text-xs font-bold uppercase tracking-wider text-[var(--color-primary)]">
-              {day.title}
+              Day {day.day_number}
             </span>
             <h2 className="font-bold text-2xl text-[var(--color-text)]">
               {day.neighborhood}
@@ -137,7 +136,7 @@ export default function DayDetailView({ day, onClose }: DayDetailViewProps) {
         {/* Timeline content */}
         <div className="p-6 overflow-y-auto max-h-[calc(85vh-80px)]">
           <p className="text-sm text-[var(--color-text-muted)] mb-6 leading-relaxed">
-            {day.description}
+            {day.theme}
           </p>
           <TimeSection timeOfDay="morning" stops={morningStops} />
           <TimeSection timeOfDay="afternoon" stops={afternoonStops} />

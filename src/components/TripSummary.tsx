@@ -18,16 +18,15 @@ const paceLabels: Record<number, string> = {
 };
 
 interface DayInfo {
-  id: number;
-  title: string;
+  day_number: number;
 }
 
 interface TripSummaryProps {
   data: TripFormData;
   onEdit: () => void;
   days: DayInfo[];
-  selectedDayId: number;
-  onSelectDay: (id: number) => void;
+  selectedDayNumber: number;
+  onSelectDay: (dayNumber: number) => void;
   totalStops: number;
 }
 
@@ -35,7 +34,7 @@ export default function TripSummary({
   data,
   onEdit,
   days,
-  selectedDayId,
+  selectedDayNumber,
   onSelectDay,
   totalStops,
 }: TripSummaryProps) {
@@ -112,15 +111,15 @@ export default function TripSummary({
           <div className="hidden sm:flex items-center gap-1 bg-[var(--color-bg-alt)] p-1 rounded-xl">
             {days.map((day) => (
               <button
-                key={day.id}
-                onClick={() => onSelectDay(day.id)}
+                key={day.day_number}
+                onClick={() => onSelectDay(day.day_number)}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer ${
-                  selectedDayId === day.id
+                  selectedDayNumber === day.day_number
                     ? "bg-white text-[var(--color-primary)] shadow-sm"
                     : "text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
                 }`}
               >
-                {day.title}
+                Day {day.day_number}
               </button>
             ))}
           </div>
