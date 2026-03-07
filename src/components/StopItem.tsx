@@ -1,18 +1,30 @@
-import type { PlaceStop } from "@/types/itinerary";
+import {
+  Utensils,
+  Coffee,
+  ShoppingBag,
+  Trees,
+  Landmark,
+  Building2,
+  Palette,
+  Wine,
+  Beer,
+  MapPin,
+  type LucideIcon,
+} from "lucide-react";
+import type { PlaceIcon, PlaceStop } from "@/types/itinerary";
 
-const categoryColors: Record<string, string> = {
-  food: "#E07A5F",
-  activity: "#3D85C6",
-  cafe: "#8B6914",
-  landmark: "#4A7C59",
-  coffee: "#8B6914",
-  museum: "#7B61A6",
-  park: "#4A7C59",
-  bar: "#C4475B",
-  shopping: "#D4A03C",
+const iconMap: Record<PlaceIcon, LucideIcon> = {
+  utensils: Utensils,
+  coffee: Coffee,
+  shopping: ShoppingBag,
+  trees: Trees,
+  landmark: Landmark,
+  museum: Building2,
+  palette: Palette,
+  wine: Wine,
+  beer: Beer,
+  "map-pin": MapPin,
 };
-
-const defaultColor = "#6B7280";
 
 const timeLabels: Record<string, string> = {
   morning: "Morning",
@@ -20,18 +32,19 @@ const timeLabels: Record<string, string> = {
   evening: "Evening",
 };
 
+function inferIcon(stop: PlaceStop): LucideIcon {
+  return iconMap[stop.icon] ?? MapPin;
+}
+
 export default function StopItem({ stop }: { stop: PlaceStop }) {
-  const color = categoryColors[stop.category.toLowerCase()] ?? defaultColor;
+  const Icon = inferIcon(stop);
   const timeLabel = timeLabels[stop.time_slot.toLowerCase()] ?? stop.time_slot;
 
   return (
     <div className="flex items-start gap-3 py-3 group">
       {/* Icon */}
-      <div
-        className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
-        style={{ backgroundColor: color + "15" }}
-      >
-        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
+      <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 bg-[var(--color-bg-alt)]">
+        <Icon size={16} className="text-[var(--color-text-muted)]" strokeWidth={1.5} />
       </div>
 
       {/* Content */}

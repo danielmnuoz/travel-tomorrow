@@ -75,9 +75,7 @@ func (p *Planner) Plan(ctx context.Context, req model.ItineraryRequest) (*model.
 		return nil, fmt.Errorf("llm chat: %w", err)
 	}
 
-	if p.cfg.Debug {
-		log.Printf("[DEBUG] planner: raw LLM response (%d bytes)", len(rawJSON))
-	}
+	log.Printf("[DEBUG] planner: raw LLM response:\n%s", rawJSON)
 
 	// 7. Parse LLM response
 	var llmResp model.LLMItineraryResponse
@@ -213,6 +211,7 @@ func (p *Planner) buildResponse(city model.CityInfo, llmResp model.LLMItineraryR
 				Longitude:   sc.Lng,
 				Category:    sc.Category,
 				TimeSlot:    llmStop.TimeSlot,
+				Icon:        llmStop.Icon,
 				Description: llmStop.Description,
 				Rating:      sc.Rating,
 				Price:       sc.Price,
