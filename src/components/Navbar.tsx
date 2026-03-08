@@ -10,14 +10,7 @@ export default function Navbar() {
         >
           Travel Tomorrow
         </Link>
-        <div className="flex items-center gap-8">
-          <Link
-            href="/plan"
-            className="text-sm font-medium bg-[var(--color-primary)] text-white px-5 py-2.5 rounded-full hover:bg-[var(--color-primary-light)] transition-all duration-200 hover:shadow-md hover:shadow-[var(--color-primary)]/20"
-          >
-            Start Planning
-          </Link>
-        </div>
+        <div className="flex items-center gap-8" />
       </div>
     </nav>
   );

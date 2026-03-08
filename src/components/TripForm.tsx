@@ -21,6 +21,7 @@ export interface TripFormData {
   city: string;
   cityLabel: string;
   days: string;
+  hotel: string;
   budget: number;
   foodStyles: string[];
   interests: string[];
@@ -129,6 +130,7 @@ interface TripFormProps {
 export default function TripForm({ onSubmit, onCancel }: TripFormProps) {
   const [city, setCity] = useState("nyc");
   const [days, setDays] = useState("3");
+  const [hotel, setHotel] = useState("");
   const [budget, setBudget] = useState(2);
   const [foodStyles, setFoodStyles] = useState<string[]>(["Local"]);
   const [interests, setInterests] = useState<string[]>(["Walking", "Cafes"]);
@@ -141,7 +143,7 @@ export default function TripForm({ onSubmit, onCancel }: TripFormProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const cityLabel = CITIES.find((c) => c.value === city)?.label ?? city;
-    onSubmit({ city, cityLabel, days, budget, foodStyles, interests, pace, transport });
+    onSubmit({ city, cityLabel, days, hotel, budget, foodStyles, interests, pace, transport });
   };
 
   return (
@@ -199,6 +201,15 @@ export default function TripForm({ onSubmit, onCancel }: TripFormProps) {
               max={7}
               value={days}
               onChange={(e) => setDays(e.target.value)}
+            />
+          </div>
+          <div className="mt-4">
+            <TextInput
+              label="Hotel / Address"
+              type="text"
+              placeholder="e.g. The Plaza Hotel, 5th Ave"
+              value={hotel}
+              onChange={(e) => setHotel(e.target.value)}
             />
           </div>
         </div>

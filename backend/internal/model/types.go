@@ -23,6 +23,7 @@ type ItineraryRequest struct {
 	Transport  string   `json:"transport"`
 	FoodStyles []string `json:"food_styles"`
 	Interests  []string `json:"interests"`
+	Hotel      string   `json:"hotel,omitempty"`
 }
 
 type ItineraryResponse struct {
@@ -44,9 +45,22 @@ type PlaceStop struct {
 	Longitude   float64 `json:"longitude"`
 	Category    string  `json:"category"`
 	TimeSlot    string  `json:"time_slot"`
+	Icon        string  `json:"icon"`
 	Description string  `json:"description"`
 	Rating      float64 `json:"rating,omitempty"`
 	Price       int     `json:"price,omitempty"`
+}
+
+// --- Refresh Stop ---
+
+type RefreshStopRequest struct {
+	Preferences ItineraryRequest `json:"preferences"`
+	CurrentDay  DayPlan          `json:"current_day"`
+	StopFsqID   string           `json:"stop_fsq_id"`
+}
+
+type RefreshStopResponse struct {
+	NewStop PlaceStop `json:"new_stop"`
 }
 
 // --- Internal Pipeline Types ---
@@ -85,5 +99,6 @@ type LLMDayPlan struct {
 type LLMStop struct {
 	FsqID       string `json:"fsq_id"`
 	TimeSlot    string `json:"time_slot"`
+	Icon        string `json:"icon"`
 	Description string `json:"description"`
 }

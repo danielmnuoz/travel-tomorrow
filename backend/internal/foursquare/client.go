@@ -30,6 +30,14 @@ var interestToCategories = map[string][]string{
 	"walking":    {"4bf58dd8d48988d163941735"},                           // Park
 }
 
+// categoryToFsqIDs maps normalized category strings back to Foursquare category IDs.
+var categoryToFsqIDs = map[string][]string{
+	"food":     {"4d4b7105d754a06374d81259"},                           // Restaurant (top-level)
+	"cafe":     {"4bf58dd8d48988d1e0931735", "4bf58dd8d48988d16d941735"}, // Coffee Shop, Café
+	"activity": {"4bf58dd8d48988d181941735", "4bf58dd8d48988d1fd941735", "4bf58dd8d48988d11f941735"}, // Museum, Shopping, Nightclub
+	"landmark": {"4d4b7105d754a06377d81259", "4bf58dd8d48988d12d941735", "4bf58dd8d48988d163941735"}, // Landmarks, Monument, Park
+}
+
 // CategoryIDsForInterests maps a list of user interest strings to Foursquare
 // category IDs. The "food" category (13065) is always included. The returned
 // slice is deduplicated.
@@ -54,9 +62,16 @@ func CategoryIDsForInterests(interests []string) []string {
 	return ids
 }
 
+// CategoryIDsForCategory maps a normalized category string (food, cafe, activity, landmark)
+// to Foursquare category IDs. Returns nil if category is unknown.
+func CategoryIDsForCategory(category string) []string {
+	return categoryToFsqIDs[strings.ToLower(category)]
+}
+
 // PlaceSearcher is the interface for searching places. *Client satisfies it.
 type PlaceSearcher interface {
 	SearchPlaces(ctx context.Context, lat, lng float64, radius int, categoryIDs []string, limit int) ([]model.Candidate, error)
+	SearchByName(ctx context.Context, query string, lat, lng float64, limit int) ([]model.Candidate, error)
 }
 
 // Client wraps the Foursquare Places API.
@@ -87,9 +102,23 @@ func (c *Client) SearchPlaces(ctx context.Context, lat, lng float64, radius int,
 	params.Set("radius", strconv.Itoa(radius))
 	params.Set("fsq_category_ids", strings.Join(categoryIDs, ","))
 	params.Set("limit", strconv.Itoa(limit))
-	// No "fields" param — requesting premium fields (rating, price, stats)
-	// burns paid credits. The default free response has everything we need.
 
+	return c.doSearch(ctx, params)
+}
+
+// SearchByName queries the Foursquare Places API by name/query string near
+// the given coordinates. Used for geocoding hotels/addresses.
+func (c *Client) SearchByName(ctx context.Context, query string, lat, lng float64, limit int) ([]model.Candidate, error) {
+	params := url.Values{}
+	params.Set("query", query)
+	params.Set("ll", fmt.Sprintf("%f,%f", lat, lng))
+	params.Set("limit", strconv.Itoa(limit))
+
+	return c.doSearch(ctx, params)
+}
+
+// doSearch executes a Foursquare Places Search request with the given params.
+func (c *Client) doSearch(ctx context.Context, params url.Values) ([]model.Candidate, error) {
 	reqURL := placesSearchURL + "?" + params.Encode()
 
 	if c.debug {
@@ -120,7 +149,11 @@ func (c *Client) SearchPlaces(ctx context.Context, lat, lng float64, radius int,
 	}
 
 	if c.debug {
-		log.Printf("[DEBUG] foursquare: categories=%s returned %d results", strings.Join(categoryIDs, ","), len(body.Results))
+		queryInfo := params.Get("query")
+		if queryInfo == "" {
+			queryInfo = params.Get("fsq_category_ids")
+		}
+		log.Printf("[DEBUG] foursquare: query=%s returned %d results", queryInfo, len(body.Results))
 		for i, r := range body.Results {
 			catNames := make([]string, len(r.Categories))
 			for j, cat := range r.Categories {

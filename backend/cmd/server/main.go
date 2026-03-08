@@ -37,6 +37,7 @@ func main() {
 	})
 
 	mux.HandleFunc("POST /api/itinerary", h.HandleItinerary)
+	mux.HandleFunc("POST /api/itinerary/refresh-stop", h.HandleRefreshStop)
 
 	log.Printf("server listening on :%s", cfg.Port)
 	if err := http.ListenAndServe(":"+cfg.Port, mux); err != nil {

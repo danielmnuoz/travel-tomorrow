@@ -23,4 +23,58 @@ Current state: places are scored by distance from a single city-center point, wi
 
 # Known Issues
 
-- **LLM icon selection** — LLM sometimes returns a plain English word (e.g. `"cafe"`) instead of the valid key (e.g. `"coffee"`), causing the icon to fall back to `map-pin`
+- **LLM icon selection** — LLM sometimes returns a plain English word (e.g. `"cafe"`) instead of the valid key (e.g. `"coffee"`), causing the icon to fall back to `map-pin`. (Might not do anything until access to a better LLM). If we do address this we want to do this singularly with a lot of testing.
+
+---
+
+# Feature Ideas
+
+## Neighborhood Selection
+- After picking a city, user picks which neighborhoods to include (e.g. NYC → Lower Manhattan, Harlem, Brooklyn, West Side, Long Island City)
+- Neighborhoods are **manually curated** per supported city (name + bounding coords)
+- Foursquare fetch scoped to selected neighborhoods, not just city center
+- LLM prompt respects which neighborhoods were selected
+- Only supported for cities where we've added neighborhood data
+
+## Must-Visit Spots
+- User can specify places they definitely want to visit
+- Input: curated list suggestions + free-text search that hits Foursquare
+- These get injected into the shortlist as pinned/locked candidates
+- LLM prompt says "these stops MUST appear, schedule around them"
+- Natural extension: "here are my 7 places, organize the trip for me" (advanced input mode)
+
+## Curated Lists
+- Maintain lists of notable places per city (Michelin picks, personal recommendations, etc.)
+- Store as JSON file per city to start, migrate to Postgres later
+- Surface as suggestions: "Since you're in NYC, consider these spots"
+- Boost curated places in the scorer
+- Feeds into must-visit spots and smart suggestions
+
+## Export to Calendar
+- Generate `.ics` file from itinerary (each stop = calendar event with time slot)
+- Client-side only — build the `.ics` string in JS, trigger download
+- No backend or API keys needed
+
+## Share Plan (View-Only Link)
+- **Requires Postgres** — itineraries need to be persisted with a unique ID
+- Save itinerary on generation, produce a shareable URL like `/plan/:id`
+- Recipient sees the itinerary read-only
+- Collaborative editing noted as a future possibility, not MVP
+
+## Rule-Based Form Suggestions
+- Frontend-only nudges during form configuration
+- Examples:
+  - No food style selected → "We'll default to local eats"
+  - Only nightlife selected → "Want to add food spots too?"
+  - Budget $ + Elegant food → gentle mismatch warning
+- Simple conditionals, no LLM calls during form filling
+
+## See All Routes on Map
+- Currently map shows one day's stops at a time
+- Add option to show all days simultaneously, color-coded by day number
+- Pass all days' stops to MapContainer, differentiate with distinct colors
+
+## Dual API Key Support
+- Config flag for which Foursquare tier to use (Embed API vs Places API)
+- Allows using expensive API key for personal use, free web key for public
+- Infrastructure/config concern, not user-facing — implement when needed

@@ -1,10 +1,14 @@
 "use client";
 
-import type { DayPlan, PlaceStop } from "@/types/itinerary";
+import { useState } from "react";
+import { refreshStop } from "@/services/itinerary";
+import type { DayPlan, PlaceStop, ItineraryRequest } from "@/types/itinerary";
 
 interface DayDetailViewProps {
   day: DayPlan;
   onClose: () => void;
+  preferences: ItineraryRequest;
+  onStopRefreshed: (dayNumber: number, oldFsqId: string, newStop: PlaceStop) => void;
 }
 
 const timeConfig: Record<string, { label: string; icon: string; color: string; bg: string }> = {
@@ -28,12 +32,57 @@ const timeConfig: Record<string, { label: string; icon: string; color: string; b
   },
 };
 
+function SwapButton({
+  onClick,
+  isLoading,
+}: {
+  onClick: () => void;
+  isLoading: boolean;
+}) {
+  return (
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+      disabled={isLoading}
+      className="w-7 h-7 rounded-full bg-white/80 hover:bg-white border border-[var(--color-border)] flex items-center justify-center transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+      title="Swap this stop"
+    >
+      {isLoading ? (
+        <div className="w-3.5 h-3.5 border-2 border-[var(--color-primary)]/20 border-t-[var(--color-primary)] rounded-full animate-spin" />
+      ) : (
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="text-[var(--color-text-muted)]"
+        >
+          <path d="M21 2v6h-6" />
+          <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
+          <path d="M3 22v-6h6" />
+          <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
+        </svg>
+      )}
+    </button>
+  );
+}
+
 function TimeSection({
   timeOfDay,
   stops,
+  refreshingStopId,
+  onSwap,
 }: {
   timeOfDay: string;
   stops: PlaceStop[];
+  refreshingStopId: string | null;
+  onSwap: (fsqId: string) => void;
 }) {
   const config = timeConfig[timeOfDay];
   if (!config || stops.length === 0) return null;
@@ -66,13 +115,19 @@ function TimeSection({
               className="rounded-xl p-4"
               style={{ backgroundColor: config.bg + "80" }}
             >
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-xs font-medium text-[var(--color-text-light)]">
-                  Stop {idx + 1}
-                </span>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-white/60 text-[var(--color-text-muted)] capitalize">
-                  {stop.category}
-                </span>
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-[var(--color-text-light)]">
+                    Stop {idx + 1}
+                  </span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-white/60 text-[var(--color-text-muted)] capitalize">
+                    {stop.category}
+                  </span>
+                </div>
+                <SwapButton
+                  onClick={() => onSwap(stop.fsq_id)}
+                  isLoading={refreshingStopId === stop.fsq_id}
+                />
               </div>
               <h4 className="font-semibold text-sm text-[var(--color-text)] mb-1">
                 {stop.name}
@@ -88,10 +143,30 @@ function TimeSection({
   );
 }
 
-export default function DayDetailView({ day, onClose }: DayDetailViewProps) {
+export default function DayDetailView({ day, onClose, preferences, onStopRefreshed }: DayDetailViewProps) {
+  const [refreshingStopId, setRefreshingStopId] = useState<string | null>(null);
+
   const morningStops = day.stops.filter((s) => s.time_slot.toLowerCase() === "morning");
   const afternoonStops = day.stops.filter((s) => s.time_slot.toLowerCase() === "afternoon");
   const eveningStops = day.stops.filter((s) => s.time_slot.toLowerCase() === "evening");
+
+  const handleSwap = async (fsqId: string) => {
+    if (refreshingStopId) return;
+    setRefreshingStopId(fsqId);
+
+    try {
+      const result = await refreshStop({
+        preferences,
+        current_day: day,
+        stop_fsq_id: fsqId,
+      });
+      onStopRefreshed(day.day_number, fsqId, result.new_stop);
+    } catch (err) {
+      console.error("Failed to refresh stop:", err);
+    } finally {
+      setRefreshingStopId(null);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center animate-fade-in">
@@ -138,9 +213,9 @@ export default function DayDetailView({ day, onClose }: DayDetailViewProps) {
           <p className="text-sm text-[var(--color-text-muted)] mb-6 leading-relaxed">
             {day.theme}
           </p>
-          <TimeSection timeOfDay="morning" stops={morningStops} />
-          <TimeSection timeOfDay="afternoon" stops={afternoonStops} />
-          <TimeSection timeOfDay="evening" stops={eveningStops} />
+          <TimeSection timeOfDay="morning" stops={morningStops} refreshingStopId={refreshingStopId} onSwap={handleSwap} />
+          <TimeSection timeOfDay="afternoon" stops={afternoonStops} refreshingStopId={refreshingStopId} onSwap={handleSwap} />
+          <TimeSection timeOfDay="evening" stops={eveningStops} refreshingStopId={refreshingStopId} onSwap={handleSwap} />
         </div>
       </div>
     </div>

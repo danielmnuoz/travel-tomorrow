@@ -6,7 +6,20 @@ export interface ItineraryRequest {
   transport: string;
   food_styles: string[];
   interests: string[];
+  hotel?: string;
 }
+
+export type PlaceIcon =
+  | "utensils"
+  | "coffee"
+  | "shopping"
+  | "trees"
+  | "landmark"
+  | "museum"
+  | "palette"
+  | "wine"
+  | "beer"
+  | "map-pin";
 
 export interface PlaceStop {
   fsq_id: string;
@@ -15,6 +28,7 @@ export interface PlaceStop {
   longitude: number;
   category: string;
   time_slot: string;
+  icon: PlaceIcon;
   description: string;
   rating?: number;
   price?: number;
@@ -30,4 +44,14 @@ export interface DayPlan {
 export interface ItineraryResponse {
   city: string;
   days: DayPlan[];
+}
+
+export interface RefreshStopRequest {
+  preferences: ItineraryRequest;
+  current_day: DayPlan;
+  stop_fsq_id: string;
+}
+
+export interface RefreshStopResponse {
+  new_stop: PlaceStop;
 }
