@@ -11,7 +11,7 @@ Current state: places are scored by distance from a single city-center point, wi
 
 ## TODO
 
-1. **Neighborhood clustering** — score by proximity to walkable clusters, not a single city-center point
+1. ~~**Neighborhood clustering**~~ — done: neighborhood selection scopes Foursquare to selected areas with tighter radius
 2. **Premium fields (rating, price, popularity)** — re-enable when Foursquare credits available
 3. **Time-aware scoring** — boost cafés for morning, restaurants for evening, etc.
 4. **Interest affinity** — weight candidates higher when they directly match user's stated interests
@@ -29,12 +29,7 @@ Current state: places are scored by distance from a single city-center point, wi
 
 # Feature Ideas
 
-## Neighborhood Selection
-- After picking a city, user picks which neighborhoods to include (e.g. NYC → Lower Manhattan, Harlem, Brooklyn, West Side, Long Island City)
-- Neighborhoods are **manually curated** per supported city (name + bounding coords)
-- Foursquare fetch scoped to selected neighborhoods, not just city center
-- LLM prompt respects which neighborhoods were selected
-- Only supported for cities where we've added neighborhood data
+## ~~Neighborhood Selection~~ (Implemented)
 
 ## Must-Visit Spots
 - User can specify places they definitely want to visit

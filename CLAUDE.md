@@ -23,12 +23,13 @@
 
 ## Stack
 - Frontend: Next.js (App Router)
-- Backend API: Node / FastAPI / Go (TBD, service-based)
+- Backend API: Go
 - DB: Postgres (local Docker, Neon later)
 - Cache: Redis (Docker)
-- LLM: Ollama / LM Studio (local models)
-- Maps: Google Maps / Mapbox (web)
-- Auth: Simple JWT/session (local-first)
+- LLM: Ollama (local models)
+- Places: Foursquare API
+- Maps: Google Maps (web)
+- Auth: TBD (not yet implemented)
 
 ## Local-First Setup
 - Everything runs locally via Docker:
@@ -36,7 +37,7 @@
   - DB
   - Redis
   - LLM
-- No cloud infra or paid APIs required for MVP.
+- Foursquare API key required (free tier works for dev).
 - Use ENV config so services can be swapped later.
 
 ## LLM Responsibilities
