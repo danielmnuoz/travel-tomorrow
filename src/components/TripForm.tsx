@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { SelectInput, TextInput } from "@/components/ui/Input";
 import Slider from "@/components/ui/Slider";
 import Button from "@/components/ui/Button";
+import type { Neighborhood } from "@/types/itinerary";
 
 const CITIES = [
   { value: "nyc", label: "New York City" },
@@ -27,6 +28,7 @@ export interface TripFormData {
   interests: string[];
   pace: number;
   transport: string;
+  neighborhoods?: string[];
 }
 
 function ChipSelect({
@@ -136,6 +138,18 @@ export default function TripForm({ onSubmit, onCancel }: TripFormProps) {
   const [interests, setInterests] = useState<string[]>(["Walking", "Cafes"]);
   const [pace, setPace] = useState(3);
   const [transport, setTransport] = useState("Mix");
+  const [neighborhoods, setNeighborhoods] = useState<string[]>([]);
+  const [availableNeighborhoods, setAvailableNeighborhoods] = useState<Neighborhood[]>([]);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+
+  useEffect(() => {
+    setNeighborhoods([]);
+    setAdvancedOpen(false);
+    fetch(`/api/neighborhoods?city=${encodeURIComponent(city)}`)
+      .then((res) => res.json())
+      .then((data) => setAvailableNeighborhoods(data.neighborhoods ?? []))
+      .catch(() => setAvailableNeighborhoods([]));
+  }, [city]);
 
   const toggleChip = (list: string[], item: string) =>
     list.includes(item) ? list.filter((i) => i !== item) : [...list, item];
@@ -143,7 +157,18 @@ export default function TripForm({ onSubmit, onCancel }: TripFormProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const cityLabel = CITIES.find((c) => c.value === city)?.label ?? city;
-    onSubmit({ city, cityLabel, days, hotel, budget, foodStyles, interests, pace, transport });
+    onSubmit({
+      city,
+      cityLabel,
+      days,
+      hotel,
+      budget,
+      foodStyles,
+      interests,
+      pace,
+      transport,
+      neighborhoods: neighborhoods.length > 0 ? neighborhoods : undefined,
+    });
   };
 
   return (
@@ -272,6 +297,62 @@ export default function TripForm({ onSubmit, onCancel }: TripFormProps) {
             onSelect={setTransport}
           />
         </div>
+
+        {/* Advanced Options — only when neighborhoods exist for the city */}
+        {availableNeighborhoods.length > 0 && (
+          <div className="bg-white rounded-2xl shadow-sm border border-[var(--color-border)]/50">
+            <button
+              type="button"
+              onClick={() => setAdvancedOpen(!advancedOpen)}
+              className="w-full flex items-center justify-between p-6 cursor-pointer"
+            >
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-light)]">
+                Advanced Options
+              </h2>
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className={`text-[var(--color-text-muted)] transition-transform duration-200 ${
+                  advancedOpen ? "rotate-180" : ""
+                }`}
+              >
+                <path d="m6 9 6 6 6-6" />
+              </svg>
+            </button>
+            {advancedOpen && (
+              <div className="px-6 pb-6">
+                <ChipSelect
+                  label="Neighborhoods"
+                  options={availableNeighborhoods.map((n) => n.name)}
+                  selected={neighborhoods.map(
+                    (id) =>
+                      availableNeighborhoods.find((n) => n.id === id)?.name ?? id
+                  )}
+                  onToggle={(name) => {
+                    const hood = availableNeighborhoods.find(
+                      (n) => n.name === name
+                    );
+                    if (hood) {
+                      setNeighborhoods(toggleChip(neighborhoods, hood.id));
+                    }
+                  }}
+                />
+                {neighborhoods.length > 0 && (
+                  <p className="text-xs text-[var(--color-text-muted)] mt-3">
+                    {neighborhoods.length} selected — each day will focus on a
+                    neighborhood area
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Submit */}
         <Button type="submit" size="lg" className="w-full">

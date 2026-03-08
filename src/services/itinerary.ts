@@ -16,6 +16,10 @@ export function mapFormToRequest(data: TripFormData): ItineraryRequest {
     food_styles: data.foodStyles.map((s) => s.toLowerCase()),
     interests: data.interests.map((s) => s.toLowerCase()),
     hotel: data.hotel || undefined,
+    neighborhoods:
+      data.neighborhoods && data.neighborhoods.length > 0
+        ? data.neighborhoods
+        : undefined,
   };
 }
 

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math"
 	"os"
 	"sync"
 
@@ -19,12 +20,15 @@ const shortlistSize = 8
 
 // candidateForLLM is the trimmed candidate struct sent to the LLM.
 type candidateForLLM struct {
-	FsqID    string  `json:"fsq_id"`
-	Name     string  `json:"name"`
-	Category string  `json:"category"`
-	Lat      float64 `json:"lat"`
-	Lng      float64 `json:"lng"`
+	FsqID        string  `json:"fsq_id"`
+	Name         string  `json:"name"`
+	Category     string  `json:"category"`
+	Lat          float64 `json:"lat"`
+	Lng          float64 `json:"lng"`
+	Neighborhood string  `json:"neighborhood,omitempty"`
 }
+
+const neighborhoodSearchRadius = 1500 // meters — tighter radius for neighborhood-scoped searches
 
 type Planner struct {
 	fsq foursquare.PlaceSearcher
@@ -43,35 +47,61 @@ func (p *Planner) Plan(ctx context.Context, req model.ItineraryRequest) (*model.
 		return nil, fmt.Errorf("unknown city: %s", req.City)
 	}
 
-	// 2. Resolve search origin (hotel or city center)
-	searchLat, searchLng := p.resolveSearchOrigin(ctx, req, city)
-
-	// 3. Map interests → Foursquare category IDs
+	// 2. Map interests → Foursquare category IDs
 	categoryIDs := foursquare.CategoryIDsForInterests(req.Interests)
 
-	// 4. Fetch candidates from Foursquare (parallel per category)
-	candidates, err := p.fetchCandidates(ctx, searchLat, searchLng, categoryIDs)
-	if err != nil {
-		return nil, fmt.Errorf("fetch candidates: %w", err)
+	// 3. Fetch candidates — neighborhood-scoped or city-wide
+	var candidates []model.Candidate
+	var resolvedNeighborhoods []model.Neighborhood
+	var neighborhoodGroups [][]model.Neighborhood
+
+	if len(req.Neighborhoods) > 0 {
+		resolvedNeighborhoods = resolveNeighborhoods(req.City, req.Neighborhoods)
+		if len(resolvedNeighborhoods) == 0 {
+			return nil, fmt.Errorf("no valid neighborhoods found for city %q", req.City)
+		}
+
+		var err error
+		candidates, err = p.fetchCandidatesForNeighborhoods(ctx, resolvedNeighborhoods, categoryIDs)
+		if err != nil {
+			return nil, fmt.Errorf("fetch neighborhood candidates: %w", err)
+		}
+
+		neighborhoodGroups = groupNeighborhoods(resolvedNeighborhoods, req.Days)
+		log.Printf("planner: grouped %d neighborhoods into %d day-groups", len(resolvedNeighborhoods), len(neighborhoodGroups))
+	} else {
+		searchLat, searchLng := p.resolveSearchOrigin(ctx, req, city)
+		var err error
+		candidates, err = p.fetchCandidates(ctx, searchLat, searchLng, categoryIDs)
+		if err != nil {
+			return nil, fmt.Errorf("fetch candidates: %w", err)
+		}
 	}
+
 	if len(candidates) == 0 {
 		return nil, fmt.Errorf("no places found for city %q with interests %v", req.City, req.Interests)
 	}
 
 	log.Printf("planner: fetched %d candidates across %d categories", len(candidates), len(categoryIDs))
 
-	// 5. Score & shortlist
+	// 4. Score & shortlist
 	scored := scorer.Score(candidates, req)
 	shortlisted := scorer.Shortlist(scored, shortlistSize*len(categoryIDs))
 
 	log.Printf("planner: shortlisted %d candidates", len(shortlisted))
 
-	// 6. Build LLM prompt
+	// 5. Build LLM prompt
 	systemPrompt, err := p.loadPrompt("prompts/rank_v1.txt")
 	if err != nil {
 		return nil, fmt.Errorf("load system prompt: %w", err)
 	}
-	userPrompt, err := p.buildUserPrompt(shortlisted, req)
+
+	// Append neighborhood instructions if applicable
+	if len(resolvedNeighborhoods) > 0 {
+		systemPrompt += neighborhoodPromptSuffix
+	}
+
+	userPrompt, err := p.buildUserPrompt(shortlisted, req, neighborhoodGroups)
 	if err != nil {
 		return nil, fmt.Errorf("build user prompt: %w", err)
 	}
@@ -80,7 +110,7 @@ func (p *Planner) Plan(ctx context.Context, req model.ItineraryRequest) (*model.
 		log.Printf("[DEBUG] planner: user prompt sent to LLM (%d bytes)", len(userPrompt))
 	}
 
-	// 7. Call LLM
+	// 6. Call LLM
 	log.Printf("planner: calling LLM for ranking + narrative...")
 	rawJSON, err := p.llm.Chat(ctx, systemPrompt, userPrompt)
 	if err != nil {
@@ -89,13 +119,13 @@ func (p *Planner) Plan(ctx context.Context, req model.ItineraryRequest) (*model.
 
 	log.Printf("[DEBUG] planner: raw LLM response:\n%s", rawJSON)
 
-	// 8. Parse LLM response
+	// 7. Parse LLM response
 	var llmResp model.LLMItineraryResponse
 	if err := json.Unmarshal([]byte(rawJSON), &llmResp); err != nil {
 		return nil, fmt.Errorf("parse llm response: %w (raw: %.200s)", err, rawJSON)
 	}
 
-	// 9. Merge LLM output with full candidate data
+	// 8. Merge LLM output with full candidate data
 	resp := p.buildResponse(city, llmResp, shortlisted)
 	return resp, nil
 }
@@ -269,11 +299,12 @@ func shortlistedToCandidates(shortlisted []model.ScoredCandidate) []candidateFor
 	candidates := make([]candidateForLLM, len(shortlisted))
 	for i, sc := range shortlisted {
 		candidates[i] = candidateForLLM{
-			FsqID:    sc.FsqID,
-			Name:     sc.Name,
-			Category: sc.Category,
-			Lat:      sc.Lat,
-			Lng:      sc.Lng,
+			FsqID:        sc.FsqID,
+			Name:         sc.Name,
+			Category:     sc.Category,
+			Lat:          sc.Lat,
+			Lng:          sc.Lng,
+			Neighborhood: sc.Neighborhood,
 		}
 	}
 	return candidates
@@ -306,8 +337,41 @@ func mergePlaceStop(llmStop model.LLMStop, shortlisted []model.ScoredCandidate) 
 	return nil
 }
 
+// neighborhoodAssignment describes which neighborhoods are grouped into a day for the LLM.
+type neighborhoodAssignment struct {
+	Day           int      `json:"day"`
+	Neighborhoods []string `json:"neighborhoods"`
+}
+
 // buildUserPrompt creates the JSON user message with shortlisted candidates and prefs.
-func (p *Planner) buildUserPrompt(shortlisted []model.ScoredCandidate, req model.ItineraryRequest) (string, error) {
+func (p *Planner) buildUserPrompt(shortlisted []model.ScoredCandidate, req model.ItineraryRequest, neighborhoodGroups [][]model.Neighborhood) (string, error) {
+	if len(neighborhoodGroups) > 0 {
+		assignments := make([]neighborhoodAssignment, len(neighborhoodGroups))
+		for i, group := range neighborhoodGroups {
+			names := make([]string, len(group))
+			for j, n := range group {
+				names[j] = n.Name
+			}
+			assignments[i] = neighborhoodAssignment{Day: i + 1, Neighborhoods: names}
+		}
+
+		prompt := struct {
+			Preferences              model.ItineraryRequest `json:"preferences"`
+			Candidates               []candidateForLLM      `json:"candidates"`
+			NeighborhoodAssignments  []neighborhoodAssignment `json:"neighborhood_assignments"`
+		}{
+			Preferences:             req,
+			Candidates:              shortlistedToCandidates(shortlisted),
+			NeighborhoodAssignments: assignments,
+		}
+
+		data, err := json.Marshal(prompt)
+		if err != nil {
+			return "", err
+		}
+		return string(data), nil
+	}
+
 	prompt := struct {
 		Preferences model.ItineraryRequest `json:"preferences"`
 		Candidates  []candidateForLLM      `json:"candidates"`
@@ -394,4 +458,196 @@ func (p *Planner) buildResponse(city model.CityInfo, llmResp model.LLMItineraryR
 		City: city.Name,
 		Days: days,
 	}
+}
+
+// --- Neighborhood helpers ---
+
+const neighborhoodPromptSuffix = `
+
+Additional instructions for neighborhood-based itineraries:
+- The user selected specific neighborhoods. The "neighborhood_assignments" field maps days to neighborhoods.
+- Assign candidates to the day matching their neighborhood (use each candidate's "neighborhood" field).
+- Each day's "neighborhood" field should be the assigned neighborhood name(s).
+- If a day has multiple neighborhoods grouped together, combine them in the neighborhood field (e.g. "SoHo & Tribeca").
+- For days without assigned neighborhoods, use any remaining candidates and group geographically.
+`
+
+// resolveNeighborhoods looks up neighborhood slugs from the curated data for a city.
+func resolveNeighborhoods(citySlug string, slugs []string) []model.Neighborhood {
+	cityNeighborhoods, ok := model.Neighborhoods[citySlug]
+	if !ok {
+		return nil
+	}
+
+	lookup := make(map[string]model.Neighborhood, len(cityNeighborhoods))
+	for _, n := range cityNeighborhoods {
+		lookup[n.ID] = n
+	}
+
+	var resolved []model.Neighborhood
+	for _, slug := range slugs {
+		if n, ok := lookup[slug]; ok {
+			resolved = append(resolved, n)
+		} else {
+			log.Printf("planner: unknown neighborhood slug %q for city %q, skipping", slug, citySlug)
+		}
+	}
+	return resolved
+}
+
+// fetchCandidatesForNeighborhoods calls fetchCandidates once per neighborhood center
+// with a tighter radius, tags each candidate with its source neighborhood, and deduplicates.
+func (p *Planner) fetchCandidatesForNeighborhoods(ctx context.Context, neighborhoods []model.Neighborhood, categoryIDs []string) ([]model.Candidate, error) {
+	type result struct {
+		candidates []model.Candidate
+		hood       model.Neighborhood
+		err        error
+	}
+
+	results := make([]result, len(neighborhoods))
+	var wg sync.WaitGroup
+
+	for i, hood := range neighborhoods {
+		wg.Add(1)
+		go func(idx int, h model.Neighborhood) {
+			defer wg.Done()
+			c, err := p.fetchCandidatesWithRadius(ctx, h.Lat, h.Lng, categoryIDs, neighborhoodSearchRadius)
+			results[idx] = result{candidates: c, hood: h, err: err}
+		}(i, hood)
+	}
+	wg.Wait()
+
+	seen := make(map[string]bool)
+	var all []model.Candidate
+	var firstErr error
+
+	for _, r := range results {
+		if r.err != nil {
+			log.Printf("planner: neighborhood %q fetch failed: %v", r.hood.Name, r.err)
+			if firstErr == nil {
+				firstErr = r.err
+			}
+			continue
+		}
+		for _, c := range r.candidates {
+			if !seen[c.FsqID] {
+				seen[c.FsqID] = true
+				c.Neighborhood = r.hood.Name
+				all = append(all, c)
+			}
+		}
+	}
+
+	if len(all) == 0 && firstErr != nil {
+		return nil, firstErr
+	}
+	return all, nil
+}
+
+// fetchCandidatesWithRadius is like fetchCandidates but with a custom radius.
+func (p *Planner) fetchCandidatesWithRadius(ctx context.Context, lat, lng float64, categoryIDs []string, radius int) ([]model.Candidate, error) {
+	type result struct {
+		candidates []model.Candidate
+		err        error
+	}
+
+	results := make([]result, len(categoryIDs))
+	var wg sync.WaitGroup
+
+	for i, catID := range categoryIDs {
+		wg.Add(1)
+		go func(idx int, id string) {
+			defer wg.Done()
+			c, err := p.fsq.SearchPlaces(ctx, lat, lng, radius, []string{id}, 15)
+			results[idx] = result{candidates: c, err: err}
+		}(i, catID)
+	}
+	wg.Wait()
+
+	seen := make(map[string]bool)
+	var all []model.Candidate
+	var firstErr error
+
+	for i, r := range results {
+		if r.err != nil {
+			log.Printf("planner: foursquare category %s failed: %v", categoryIDs[i], r.err)
+			if firstErr == nil {
+				firstErr = r.err
+			}
+			continue
+		}
+		for _, c := range r.candidates {
+			if !seen[c.FsqID] {
+				seen[c.FsqID] = true
+				all = append(all, c)
+			}
+		}
+	}
+
+	if len(all) == 0 && firstErr != nil {
+		return nil, firstErr
+	}
+	return all, nil
+}
+
+// groupNeighborhoods assigns neighborhoods to days.
+// If neighborhoods <= days: one per day, remaining days are unconstrained.
+// If neighborhoods > days: greedy nearest-neighbor merge until we have `days` groups.
+func groupNeighborhoods(neighborhoods []model.Neighborhood, days int) [][]model.Neighborhood {
+	if len(neighborhoods) == 0 {
+		return nil
+	}
+
+	// Start with each neighborhood in its own group
+	groups := make([][]model.Neighborhood, len(neighborhoods))
+	for i, n := range neighborhoods {
+		groups[i] = []model.Neighborhood{n}
+	}
+
+	// Merge closest groups until we have at most `days` groups
+	for len(groups) > days {
+		// Find the two closest groups
+		minDist := math.MaxFloat64
+		mergeA, mergeB := 0, 1
+		for i := 0; i < len(groups); i++ {
+			for j := i + 1; j < len(groups); j++ {
+				d := groupDistance(groups[i], groups[j])
+				if d < minDist {
+					minDist = d
+					mergeA, mergeB = i, j
+				}
+			}
+		}
+		// Merge B into A, remove B
+		groups[mergeA] = append(groups[mergeA], groups[mergeB]...)
+		groups = append(groups[:mergeB], groups[mergeB+1:]...)
+	}
+
+	return groups
+}
+
+// groupDistance returns the minimum distance between any two neighborhoods across two groups.
+func groupDistance(a, b []model.Neighborhood) float64 {
+	minDist := math.MaxFloat64
+	for _, na := range a {
+		for _, nb := range b {
+			d := haversine(na.Lat, na.Lng, nb.Lat, nb.Lng)
+			if d < minDist {
+				minDist = d
+			}
+		}
+	}
+	return minDist
+}
+
+// haversine returns the distance in meters between two lat/lng points.
+func haversine(lat1, lng1, lat2, lng2 float64) float64 {
+	const R = 6371000 // Earth radius in meters
+	dLat := (lat2 - lat1) * math.Pi / 180
+	dLng := (lng2 - lng1) * math.Pi / 180
+	a := math.Sin(dLat/2)*math.Sin(dLat/2) +
+		math.Cos(lat1*math.Pi/180)*math.Cos(lat2*math.Pi/180)*
+			math.Sin(dLng/2)*math.Sin(dLng/2)
+	c := 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
+	return R * c
 }

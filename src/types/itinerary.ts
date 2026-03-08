@@ -7,6 +7,14 @@ export interface ItineraryRequest {
   food_styles: string[];
   interests: string[];
   hotel?: string;
+  neighborhoods?: string[];
+}
+
+export interface Neighborhood {
+  id: string;
+  name: string;
+  lat: number;
+  lng: number;
 }
 
 export type PlaceIcon =

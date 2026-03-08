@@ -16,14 +16,15 @@ var Cities = map[string]CityInfo{
 // --- API Request / Response ---
 
 type ItineraryRequest struct {
-	City       string   `json:"city"`
-	Days       int      `json:"days"`
-	Budget     int      `json:"budget"`
-	Pace       int      `json:"pace"`
-	Transport  string   `json:"transport"`
-	FoodStyles []string `json:"food_styles"`
-	Interests  []string `json:"interests"`
-	Hotel      string   `json:"hotel,omitempty"`
+	City           string   `json:"city"`
+	Days           int      `json:"days"`
+	Budget         int      `json:"budget"`
+	Pace           int      `json:"pace"`
+	Transport      string   `json:"transport"`
+	FoodStyles     []string `json:"food_styles"`
+	Interests      []string `json:"interests"`
+	Hotel          string   `json:"hotel,omitempty"`
+	Neighborhoods  []string `json:"neighborhoods,omitempty"`
 }
 
 type ItineraryResponse struct {
@@ -76,6 +77,7 @@ type Candidate struct {
 	Price         int // 1-4, 0 if unknown
 	Distance      float64
 	RawCategories []string
+	Neighborhood  string // which neighborhood this candidate came from (if any)
 }
 
 type ScoredCandidate struct {

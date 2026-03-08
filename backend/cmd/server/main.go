@@ -36,6 +36,7 @@ func main() {
 		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 	})
 
+	mux.HandleFunc("GET /api/neighborhoods", h.HandleNeighborhoods)
 	mux.HandleFunc("POST /api/itinerary", h.HandleItinerary)
 	mux.HandleFunc("POST /api/itinerary/refresh-stop", h.HandleRefreshStop)
 
