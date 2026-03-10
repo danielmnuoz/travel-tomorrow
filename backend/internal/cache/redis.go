@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/danielmnuoz/travel-tomorrow/backend/internal/foursquare"
@@ -34,27 +35,53 @@ func NewCachedSearcher(inner foursquare.PlaceSearcher, rdb *redis.Client, ttl ti
 // SearchPlaces checks Redis first, falling back to the inner searcher on miss or error.
 func (c *CachedSearcher) SearchPlaces(ctx context.Context, lat, lng float64, radius int, categoryIDs []string, limit int) ([]model.Candidate, error) {
 	key := cacheKey(lat, lng, categoryIDs, radius)
-
-	// Try cache
-	val, err := c.rdb.Get(ctx, key).Result()
-	if err == nil {
-		var candidates []model.Candidate
-		if err := json.Unmarshal([]byte(val), &candidates); err == nil {
-			log.Printf("[DEBUG] cache: HIT %s (%d candidates)", key, len(candidates))
-			return candidates, nil
-		}
-		log.Printf("[DEBUG] cache: unmarshal error for key %s: %v", key, err)
-	} else if err != redis.Nil {
-		log.Printf("[DEBUG] cache: Redis GET error for key %s: %v", key, err)
+	if candidates, ok := c.getFromCache(ctx, key); ok {
+		return candidates, nil
 	}
 
-	// Cache miss or error — call inner searcher
 	candidates, err := c.inner.SearchPlaces(ctx, lat, lng, radius, categoryIDs, limit)
 	if err != nil {
 		return nil, err
 	}
 
-	// Store in cache (best-effort)
+	c.setInCache(ctx, key, candidates)
+	return candidates, nil
+}
+
+// SearchByName checks Redis first, falling back to the inner searcher on miss or error.
+func (c *CachedSearcher) SearchByName(ctx context.Context, query string, lat, lng float64, limit int) ([]model.Candidate, error) {
+	key := nameSearchCacheKey(query, lat, lng)
+	if candidates, ok := c.getFromCache(ctx, key); ok {
+		return candidates, nil
+	}
+
+	candidates, err := c.inner.SearchByName(ctx, query, lat, lng, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	c.setInCache(ctx, key, candidates)
+	return candidates, nil
+}
+
+// getFromCache tries to retrieve candidates from Redis. Returns (nil, false) on miss/error.
+func (c *CachedSearcher) getFromCache(ctx context.Context, key string) ([]model.Candidate, bool) {
+	val, err := c.rdb.Get(ctx, key).Result()
+	if err == nil {
+		var candidates []model.Candidate
+		if err := json.Unmarshal([]byte(val), &candidates); err == nil {
+			log.Printf("[DEBUG] cache: HIT %s (%d candidates)", key, len(candidates))
+			return candidates, true
+		}
+		log.Printf("[DEBUG] cache: unmarshal error for key %s: %v", key, err)
+	} else if err != redis.Nil {
+		log.Printf("[DEBUG] cache: Redis GET error for key %s: %v", key, err)
+	}
+	return nil, false
+}
+
+// setInCache stores candidates in Redis (best-effort).
+func (c *CachedSearcher) setInCache(ctx context.Context, key string, candidates []model.Candidate) {
 	data, marshalErr := json.Marshal(candidates)
 	if marshalErr == nil {
 		if setErr := c.rdb.Set(ctx, key, data, c.ttl).Err(); setErr != nil {
@@ -63,11 +90,9 @@ func (c *CachedSearcher) SearchPlaces(ctx context.Context, lat, lng float64, rad
 			log.Printf("[DEBUG] cache: MISS → stored %s (%d candidates, ttl=%s)", key, len(candidates), c.ttl)
 		}
 	}
-
-	return candidates, nil
 }
 
-// cacheKey builds a deterministic cache key.
+// cacheKey builds a deterministic cache key for category-based searches.
 // Format: fsq:{lat},{lng}:{categoryID1,categoryID2}:{radius}
 func cacheKey(lat, lng float64, categoryIDs []string, radius int) string {
 	cats := ""
@@ -78,4 +103,11 @@ func cacheKey(lat, lng float64, categoryIDs []string, radius int) string {
 		cats += id
 	}
 	return fmt.Sprintf("fsq:%.4f,%.4f:%s:%d", lat, lng, cats, radius)
+}
+
+// nameSearchCacheKey builds a cache key for name-based searches.
+// Format: fsq:name:{query}:{lat},{lng}
+func nameSearchCacheKey(query string, lat, lng float64) string {
+	q := strings.ToLower(strings.TrimSpace(query))
+	return fmt.Sprintf("fsq:name:%s:%.4f,%.4f", q, lat, lng)
 }

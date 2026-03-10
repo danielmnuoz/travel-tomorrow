@@ -1,0 +1,65 @@
+export interface ItineraryRequest {
+  city: string;
+  days: number;
+  budget: number;
+  pace: number;
+  transport: string;
+  food_styles: string[];
+  interests: string[];
+  hotel?: string;
+  neighborhoods?: string[];
+}
+
+export interface Neighborhood {
+  id: string;
+  name: string;
+  lat: number;
+  lng: number;
+}
+
+export type PlaceIcon =
+  | "utensils"
+  | "coffee"
+  | "shopping"
+  | "trees"
+  | "landmark"
+  | "museum"
+  | "palette"
+  | "wine"
+  | "beer"
+  | "map-pin";
+
+export interface PlaceStop {
+  fsq_id: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+  category: string;
+  time_slot: string;
+  icon: PlaceIcon;
+  description: string;
+  rating?: number;
+  price?: number;
+}
+
+export interface DayPlan {
+  day_number: number;
+  neighborhood: string;
+  theme: string;
+  stops: PlaceStop[];
+}
+
+export interface ItineraryResponse {
+  city: string;
+  days: DayPlan[];
+}
+
+export interface RefreshStopRequest {
+  preferences: ItineraryRequest;
+  current_day: DayPlan;
+  stop_fsq_id: string;
+}
+
+export interface RefreshStopResponse {
+  new_stop: PlaceStop;
+}
