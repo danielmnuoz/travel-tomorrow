@@ -56,6 +56,17 @@ Current state: places are scored by distance from a single city-center point, wi
 - Recipient sees the itinerary read-only
 - Collaborative editing noted as a future possibility, not MVP
 
+## See All Routes on Map
+- Currently map shows one day's stops at a time
+- Add option to show all days simultaneously, color-coded by day number
+- Pass all days' stops to MapContainer, differentiate with distinct colors
+
+## Dual API Key Support
+- Config flag for which tier/provider to use per service:
+  - **Foursquare**: Embed API vs Places API — free web key for public, expensive key for personal use
+  - **Maps**: try OpenMapBox (or similar popular free option) first, upgrade to full Google Maps later
+- Infrastructure/config concern, not user-facing — implement when needed
+
 ## Rule-Based Form Suggestions
 - Frontend-only nudges during form configuration
 - Examples:
@@ -63,13 +74,3 @@ Current state: places are scored by distance from a single city-center point, wi
   - Only nightlife selected → "Want to add food spots too?"
   - Budget $ + Elegant food → gentle mismatch warning
 - Simple conditionals, no LLM calls during form filling
-
-## See All Routes on Map
-- Currently map shows one day's stops at a time
-- Add option to show all days simultaneously, color-coded by day number
-- Pass all days' stops to MapContainer, differentiate with distinct colors
-
-## Dual API Key Support
-- Config flag for which Foursquare tier to use (Embed API vs Places API)
-- Allows using expensive API key for personal use, free web key for public
-- Infrastructure/config concern, not user-facing — implement when needed
