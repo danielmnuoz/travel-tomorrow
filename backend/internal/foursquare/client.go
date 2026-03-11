@@ -71,7 +71,6 @@ func CategoryIDsForCategory(category string) []string {
 // PlaceSearcher is the interface for searching places. *Client satisfies it.
 type PlaceSearcher interface {
 	SearchPlaces(ctx context.Context, lat, lng float64, radius int, categoryIDs []string, limit int) ([]model.Candidate, error)
-	SearchByName(ctx context.Context, query string, lat, lng float64, limit int) ([]model.Candidate, error)
 }
 
 // Client wraps the Foursquare Places API.
@@ -101,17 +100,6 @@ func (c *Client) SearchPlaces(ctx context.Context, lat, lng float64, radius int,
 	params.Set("ll", fmt.Sprintf("%f,%f", lat, lng))
 	params.Set("radius", strconv.Itoa(radius))
 	params.Set("fsq_category_ids", strings.Join(categoryIDs, ","))
-	params.Set("limit", strconv.Itoa(limit))
-
-	return c.doSearch(ctx, params)
-}
-
-// SearchByName queries the Foursquare Places API by name/query string near
-// the given coordinates. Used for geocoding hotels/addresses.
-func (c *Client) SearchByName(ctx context.Context, query string, lat, lng float64, limit int) ([]model.Candidate, error) {
-	params := url.Values{}
-	params.Set("query", query)
-	params.Set("ll", fmt.Sprintf("%f,%f", lat, lng))
 	params.Set("limit", strconv.Itoa(limit))
 
 	return c.doSearch(ctx, params)

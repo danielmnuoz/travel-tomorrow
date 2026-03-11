@@ -23,7 +23,7 @@ type ItineraryRequest struct {
 	Transport      string   `json:"transport"`
 	FoodStyles     []string `json:"food_styles"`
 	Interests      []string `json:"interests"`
-	Hotel          string   `json:"hotel,omitempty"`
+	Address        string   `json:"address,omitempty"`
 	Neighborhoods  []string `json:"neighborhoods,omitempty"`
 }
 

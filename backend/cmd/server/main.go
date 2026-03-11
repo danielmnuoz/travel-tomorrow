@@ -9,6 +9,7 @@ import (
 	"github.com/danielmnuoz/travel-tomorrow/backend/internal/cache"
 	"github.com/danielmnuoz/travel-tomorrow/backend/internal/config"
 	"github.com/danielmnuoz/travel-tomorrow/backend/internal/foursquare"
+	"github.com/danielmnuoz/travel-tomorrow/backend/internal/geocoder"
 	"github.com/danielmnuoz/travel-tomorrow/backend/internal/handler"
 	"github.com/danielmnuoz/travel-tomorrow/backend/internal/llm"
 	"github.com/danielmnuoz/travel-tomorrow/backend/internal/planner"
@@ -25,7 +26,8 @@ func main() {
 	rdb := cache.NewRedisClient(cfg.RedisURL)
 	cachedFsq := cache.NewCachedSearcher(fsqClient, rdb, 7*24*time.Hour)
 	llmClient := llm.NewClient(cfg.OllamaURL, cfg.OllamaModel, nil)
-	p := planner.New(cachedFsq, llmClient, cfg)
+	geo := geocoder.NewNominatimClient(nil)
+	p := planner.New(cachedFsq, llmClient, cfg, geo)
 	h := handler.New(p)
 
 	// Routes

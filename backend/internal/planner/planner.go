@@ -11,6 +11,7 @@ import (
 
 	"github.com/danielmnuoz/travel-tomorrow/backend/internal/config"
 	"github.com/danielmnuoz/travel-tomorrow/backend/internal/foursquare"
+	"github.com/danielmnuoz/travel-tomorrow/backend/internal/geocoder"
 	"github.com/danielmnuoz/travel-tomorrow/backend/internal/llm"
 	"github.com/danielmnuoz/travel-tomorrow/backend/internal/model"
 	"github.com/danielmnuoz/travel-tomorrow/backend/internal/scorer"
@@ -31,13 +32,14 @@ type candidateForLLM struct {
 const neighborhoodSearchRadius = 1500 // meters — tighter radius for neighborhood-scoped searches
 
 type Planner struct {
-	fsq foursquare.PlaceSearcher
-	llm *llm.Client
-	cfg *config.Config
+	fsq      foursquare.PlaceSearcher
+	llm      *llm.Client
+	cfg      *config.Config
+	geocoder geocoder.Geocoder
 }
 
-func New(fsq foursquare.PlaceSearcher, llmClient *llm.Client, cfg *config.Config) *Planner {
-	return &Planner{fsq: fsq, llm: llmClient, cfg: cfg}
+func New(fsq foursquare.PlaceSearcher, llmClient *llm.Client, cfg *config.Config, geo geocoder.Geocoder) *Planner {
+	return &Planner{fsq: fsq, llm: llmClient, cfg: cfg, geocoder: geo}
 }
 
 func (p *Planner) Plan(ctx context.Context, req model.ItineraryRequest) (*model.ItineraryResponse, error) {
@@ -219,23 +221,21 @@ func (p *Planner) RefreshStop(ctx context.Context, req model.RefreshStopRequest)
 }
 
 // resolveSearchOrigin returns the lat/lng to use as search center.
-// If the user specified a hotel and it can be geocoded, use the hotel coords.
+// If the user specified an address and it can be geocoded, use those coords.
 // Otherwise, fall back to city center.
 func (p *Planner) resolveSearchOrigin(ctx context.Context, req model.ItineraryRequest, city model.CityInfo) (float64, float64) {
-	if req.Hotel == "" {
+	if req.Address == "" {
 		return city.Lat, city.Lng
 	}
 
-	results, err := p.fsq.SearchByName(ctx, req.Hotel, city.Lat, city.Lng, 1)
-	if err != nil || len(results) == 0 {
-		log.Printf("planner: hotel resolution failed for %q, using city center", req.Hotel)
+	lat, lng, err := p.geocoder.Geocode(ctx, req.Address)
+	if err != nil {
+		log.Printf("planner: address geocoding failed for %q, using city center: %v", req.Address, err)
 		return city.Lat, city.Lng
 	}
 
-	h := results[0]
-	log.Printf("planner: hotel resolved %q → %q (lat=%.5f, lng=%.5f, dist=%.0fm, categories=%v)",
-		req.Hotel, h.Name, h.Lat, h.Lng, h.Distance, h.RawCategories)
-	return h.Lat, h.Lng
+	log.Printf("planner: address resolved %q → (lat=%.5f, lng=%.5f)", req.Address, lat, lng)
+	return lat, lng
 }
 
 // fetchCandidates calls Foursquare for each category in parallel and deduplicates.

@@ -15,7 +15,7 @@ export function mapFormToRequest(data: TripFormData): ItineraryRequest {
     transport: data.transport.toLowerCase(),
     food_styles: data.foodStyles.map((s) => s.toLowerCase()),
     interests: data.interests.map((s) => s.toLowerCase()),
-    hotel: data.hotel || undefined,
+    address: data.address || undefined,
     neighborhoods:
       data.neighborhoods && data.neighborhoods.length > 0
         ? data.neighborhoods

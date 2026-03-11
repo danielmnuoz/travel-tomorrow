@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"strings"
 	"time"
 
 	"github.com/danielmnuoz/travel-tomorrow/backend/internal/foursquare"
@@ -40,22 +39,6 @@ func (c *CachedSearcher) SearchPlaces(ctx context.Context, lat, lng float64, rad
 	}
 
 	candidates, err := c.inner.SearchPlaces(ctx, lat, lng, radius, categoryIDs, limit)
-	if err != nil {
-		return nil, err
-	}
-
-	c.setInCache(ctx, key, candidates)
-	return candidates, nil
-}
-
-// SearchByName checks Redis first, falling back to the inner searcher on miss or error.
-func (c *CachedSearcher) SearchByName(ctx context.Context, query string, lat, lng float64, limit int) ([]model.Candidate, error) {
-	key := nameSearchCacheKey(query, lat, lng)
-	if candidates, ok := c.getFromCache(ctx, key); ok {
-		return candidates, nil
-	}
-
-	candidates, err := c.inner.SearchByName(ctx, query, lat, lng, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -105,9 +88,3 @@ func cacheKey(lat, lng float64, categoryIDs []string, radius int) string {
 	return fmt.Sprintf("fsq:%.4f,%.4f:%s:%d", lat, lng, cats, radius)
 }
 
-// nameSearchCacheKey builds a cache key for name-based searches.
-// Format: fsq:name:{query}:{lat},{lng}
-func nameSearchCacheKey(query string, lat, lng float64) string {
-	q := strings.ToLower(strings.TrimSpace(query))
-	return fmt.Sprintf("fsq:name:%s:%.4f,%.4f", q, lat, lng)
-}

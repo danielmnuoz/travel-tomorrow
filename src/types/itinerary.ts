@@ -6,7 +6,7 @@ export interface ItineraryRequest {
   transport: string;
   food_styles: string[];
   interests: string[];
-  hotel?: string;
+  address?: string;
   neighborhoods?: string[];
 }
 

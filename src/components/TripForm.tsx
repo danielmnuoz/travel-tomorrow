@@ -22,7 +22,7 @@ export interface TripFormData {
   city: string;
   cityLabel: string;
   days: string;
-  hotel: string;
+  address: string;
   budget: number;
   foodStyles: string[];
   interests: string[];
@@ -132,7 +132,7 @@ interface TripFormProps {
 export default function TripForm({ onSubmit, onCancel }: TripFormProps) {
   const [city, setCity] = useState("nyc");
   const [days, setDays] = useState("3");
-  const [hotel, setHotel] = useState("");
+  const [address, setAddress] = useState("");
   const [budget, setBudget] = useState(2);
   const [foodStyles, setFoodStyles] = useState<string[]>(["Local"]);
   const [interests, setInterests] = useState<string[]>(["Walking", "Cafes"]);
@@ -161,7 +161,7 @@ export default function TripForm({ onSubmit, onCancel }: TripFormProps) {
       city,
       cityLabel,
       days,
-      hotel,
+      address,
       budget,
       foodStyles,
       interests,
@@ -230,11 +230,11 @@ export default function TripForm({ onSubmit, onCancel }: TripFormProps) {
           </div>
           <div className="mt-4">
             <TextInput
-              label="Hotel / Address"
+              label="Address"
               type="text"
-              placeholder="e.g. The Plaza Hotel, 5th Ave"
-              value={hotel}
-              onChange={(e) => setHotel(e.target.value)}
+              placeholder="e.g. 768 5th Ave, New York"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
             />
           </div>
         </div>
