@@ -15,7 +15,7 @@ const CITIES = [
 ];
 
 const FOOD_STYLES = ["Cheap Eats", "Elegant", "Local", "Street Food", "Touristy"];
-const INTERESTS = ["Museums", "Nightlife", "Cafes", "Walking", "Shopping", "Parks", "History"];
+const INTERESTS = ["Museums", "Nightlife", "Cafes", "Shopping", "Parks", "History"];
 const TRANSPORT = ["Walk", "Metro", "Mix"];
 
 export interface TripFormData {
@@ -135,7 +135,7 @@ export default function TripForm({ onSubmit, onCancel }: TripFormProps) {
   const [address, setAddress] = useState("");
   const [budget, setBudget] = useState(2);
   const [foodStyles, setFoodStyles] = useState<string[]>(["Local"]);
-  const [interests, setInterests] = useState<string[]>(["Walking", "Cafes"]);
+  const [interests, setInterests] = useState<string[]>(["Cafes"]);
   const [pace, setPace] = useState(3);
   const [transport, setTransport] = useState("Mix");
   const [neighborhoods, setNeighborhoods] = useState<string[]>([]);

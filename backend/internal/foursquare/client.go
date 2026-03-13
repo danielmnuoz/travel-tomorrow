@@ -27,7 +27,6 @@ var interestToCategories = map[string][]string{
 	"nightlife":  {"4bf58dd8d48988d11f941735"},                           // Night Club
 	"history":    {"4d4b7105d754a06377d81259"},                           // Landmarks and Outdoors (top-level)
 	"landmarks":  {"4d4b7105d754a06377d81259", "4bf58dd8d48988d12d941735"}, // Landmarks and Outdoors, Monument
-	"walking":    {"4bf58dd8d48988d163941735"},                           // Park
 }
 
 // categoryToFsqIDs maps normalized category strings back to Foursquare category IDs.
