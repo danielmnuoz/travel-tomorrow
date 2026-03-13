@@ -67,10 +67,10 @@ Current state: places are scored by distance from a single city-center point, wi
   - **Maps**: try OpenMapBox (or similar popular free option) first, upgrade to full Google Maps later
 - Infrastructure/config concern, not user-facing — implement when needed
 
-## Rule-Based Form Suggestions
-- Frontend-only nudges during form configuration
-- Examples:
-  - No food style selected → "We'll default to local eats"
-  - Only nightlife selected → "Want to add food spots too?"
-  - Budget $ + Elegant food → gentle mismatch warning
-- Simple conditionals, no LLM calls during form filling
+## ~~Rule-Based Form Suggestions~~ (Implemented)
+- ~~Frontend-only nudges during form configuration~~
+- ~~Examples:~~
+  - ~~No food style selected → "We'll default to local eats"~~
+  - ~~Only nightlife selected → "Want to add food spots too?"~~
+  - ~~Budget $ + Elegant food → gentle mismatch warning~~
+- ~~Simple conditionals, no LLM calls during form filling~~

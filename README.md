@@ -24,3 +24,4 @@ Neighborhoods always take priority — when selected, the hotel location is igno
 - **LLM-powered ranking** — shortlisted Foursquare candidates are scored locally, then an LLM picks final stops and writes descriptions and themes.
 - **Redis caching** — Foursquare API responses are cached (7-day TTL) to avoid redundant calls during iteration.
 - **Responsive layout** — mobile stacks map above day cards; desktop uses a split view with a sticky map.
+- **Form hints** — subtle inline nudges appear when form settings conflict (e.g. low budget + elegant dining) or when no food styles/interests are selected, helping users catch mismatches before generating.

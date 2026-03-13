@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { SelectInput, TextInput } from "@/components/ui/Input";
 import Slider from "@/components/ui/Slider";
 import Button from "@/components/ui/Button";
+import FormHint from "@/components/ui/FormHint";
+import { getFormHints } from "@/lib/formHints";
 import type { Neighborhood } from "@/types/itinerary";
 
 const CITIES = [
@@ -151,6 +153,16 @@ export default function TripForm({ onSubmit, onCancel }: TripFormProps) {
       .catch(() => setAvailableNeighborhoods([]));
   }, [city]);
 
+  const hints = getFormHints({
+    budget,
+    foodStyles,
+    interests,
+    pace,
+    transport,
+    neighborhoods,
+    days: Number(days) || 1,
+  });
+
   const toggleChip = (list: string[], item: string) =>
     list.includes(item) ? list.filter((i) => i !== item) : [...list, item];
 
@@ -262,6 +274,9 @@ export default function TripForm({ onSubmit, onCancel }: TripFormProps) {
               renderValue={(v) => paceLabels[v]}
             />
           </div>
+          {hints.filter((h) => h.section === "style").map((h) => (
+            <FormHint key={h.id} message={h.message} />
+          ))}
         </div>
 
         {/* Food & Interests */}
@@ -283,6 +298,9 @@ export default function TripForm({ onSubmit, onCancel }: TripFormProps) {
               onToggle={(item) => setInterests(toggleChip(interests, item))}
             />
           </div>
+          {hints.filter((h) => h.section === "preferences").map((h) => (
+            <FormHint key={h.id} message={h.message} />
+          ))}
         </div>
 
         {/* Transport */}
@@ -296,6 +314,9 @@ export default function TripForm({ onSubmit, onCancel }: TripFormProps) {
             selected={transport}
             onSelect={setTransport}
           />
+          {hints.filter((h) => h.section === "transport").map((h) => (
+            <FormHint key={h.id} message={h.message} />
+          ))}
         </div>
 
         {/* Advanced Options — only when neighborhoods exist for the city */}
@@ -349,6 +370,9 @@ export default function TripForm({ onSubmit, onCancel }: TripFormProps) {
                     neighborhood area
                   </p>
                 )}
+                {hints.filter((h) => h.section === "advanced").map((h) => (
+                  <FormHint key={h.id} message={h.message} />
+                ))}
               </div>
             )}
           </div>
