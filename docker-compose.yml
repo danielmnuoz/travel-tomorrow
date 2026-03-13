@@ -18,3 +18,7 @@ services:
       - "host.docker.internal:host-gateway"
     depends_on:
       - redis
+    develop:
+      watch:
+        - action: rebuild
+          path: ./backend
