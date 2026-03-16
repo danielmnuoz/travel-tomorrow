@@ -38,6 +38,13 @@ Current state: places are scored by distance from a single city-center point, wi
 - ~~LLM prompt says "these stops MUST appear, schedule around them"~~
 - ~~Natural extension: "here are my 7 places, organize the trip for me" (advanced input mode)~~
 
+## User Category Overrides & Meal Controls
+- Optional user-assigned category per pinned stop: Museum, Quick Sight (park/viewpoint), Snack/Dessert, Meal, Nightlife, Shopping
+- Reduces dependency on Foursquare category resolution (which may not always match)
+- Helps the planner make better scheduling decisions (time-of-day, meal limits)
+- Optional min/max meals-per-day setting on the form (currently hardcoded as prompt hint of max 3)
+- User override takes priority over Foursquare-resolved category
+
 ## Curated Lists
 - Maintain lists of notable places per city (Michelin picks, personal recommendations, etc.)
 - Store as JSON file per city to start, migrate to Postgres later
@@ -66,6 +73,14 @@ Current state: places are scored by distance from a single city-center point, wi
   - **Foursquare**: Embed API vs Places API — free web key for public, expensive key for personal use
   - **Maps**: try OpenMapBox (or similar popular free option) first, upgrade to full Google Maps later
 - Infrastructure/config concern, not user-facing — implement when needed
+
+## Itinerary Results UI Revamp
+- **Drag & drop** — stops can be dragged between day cards and dropped into specific time slots (morning/afternoon/evening)
+- **Edit stop** — inline edit option on each stop (change name, time slot, or notes)
+- **Delete stop** — remove a stop from a day without regenerating
+- **Deferred map update** — map doesn't re-route on every change; instead a "Remap" button appears after edits, and clicking it recalculates routes for the updated itinerary
+- Goal: let users fine-tune results post-generation without re-running the LLM
+- Consider: react-beautiful-dnd or dnd-kit for drag interactions
 
 ## ~~Rule-Based Form Suggestions~~ (Implemented)
 - ~~Frontend-only nudges during form configuration~~

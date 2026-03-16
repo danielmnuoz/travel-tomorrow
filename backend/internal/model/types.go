@@ -16,10 +16,11 @@ var Cities = map[string]CityInfo{
 // --- API Request / Response ---
 
 type MustVisitPlace struct {
-	ID   string  `json:"id"`
-	Name string  `json:"name"`
-	Lat  float64 `json:"latitude"`
-	Lng  float64 `json:"longitude"`
+	ID       string  `json:"id"`
+	Name     string  `json:"name"`
+	Lat      float64 `json:"latitude"`
+	Lng      float64 `json:"longitude"`
+	Category string  `json:"category,omitempty"`
 }
 
 type ItineraryRequest struct {

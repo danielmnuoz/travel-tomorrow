@@ -67,9 +67,18 @@ func CategoryIDsForCategory(category string) []string {
 	return categoryToFsqIDs[strings.ToLower(category)]
 }
 
+// PlaceMatch holds the result of a place name+coordinate match.
+type PlaceMatch struct {
+	FsqID         string
+	Name          string
+	Category      string   // normalized: "food", "cafe", "activity", "landmark"
+	RawCategories []string // original Foursquare category names
+}
+
 // PlaceSearcher is the interface for searching places. *Client satisfies it.
 type PlaceSearcher interface {
 	SearchPlaces(ctx context.Context, lat, lng float64, radius int, categoryIDs []string, limit int) ([]model.Candidate, error)
+	MatchPlace(ctx context.Context, name string, lat, lng float64) (*PlaceMatch, error)
 }
 
 // Client wraps the Foursquare Places API.
@@ -102,6 +111,33 @@ func (c *Client) SearchPlaces(ctx context.Context, lat, lng float64, radius int,
 	params.Set("limit", strconv.Itoa(limit))
 
 	return c.doSearch(ctx, params)
+}
+
+// MatchPlace searches Foursquare by name near given coordinates to resolve
+// a place's category. Uses a tight 200m radius and returns the best match.
+func (c *Client) MatchPlace(ctx context.Context, name string, lat, lng float64) (*PlaceMatch, error) {
+	params := url.Values{}
+	params.Set("query", name)
+	params.Set("ll", fmt.Sprintf("%f,%f", lat, lng))
+	params.Set("radius", "200")
+	params.Set("limit", "1")
+
+	candidates, err := c.doSearch(ctx, params)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(candidates) == 0 {
+		return nil, nil // no match found
+	}
+
+	best := candidates[0]
+	return &PlaceMatch{
+		FsqID:         best.FsqID,
+		Name:          best.Name,
+		Category:      best.Category,
+		RawCategories: best.RawCategories,
+	}, nil
 }
 
 // doSearch executes a Foursquare Places Search request with the given params.

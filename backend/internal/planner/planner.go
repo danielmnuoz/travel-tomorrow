@@ -93,15 +93,31 @@ func (p *Planner) Plan(ctx context.Context, req model.ItineraryRequest) (*model.
 
 	log.Printf("planner: shortlisted %d candidates", len(shortlisted))
 
-	// 4b. Inject must-visit stops as high-score candidates
-	for _, mv := range req.MustVisits {
+	// 4b. Resolve categories for must-visit stops via Foursquare, then inject
+	for i := range req.MustVisits {
+		mv := &req.MustVisits[i]
+		match, err := p.fsq.MatchPlace(ctx, mv.Name, mv.Lat, mv.Lng)
+		if err != nil {
+			log.Printf("planner: foursquare match failed for pinned %q: %v, defaulting to activity", mv.Name, err)
+		}
+		if match != nil {
+			mv.Category = match.Category
+			log.Printf("planner: pinned %q → foursquare matched %q, raw categories: %v, normalized: %s",
+				mv.Name, match.Name, match.RawCategories, match.Category)
+		} else {
+			if mv.Category == "" {
+				mv.Category = "activity"
+			}
+			log.Printf("planner: pinned %q → no foursquare match, using category: %s", mv.Name, mv.Category)
+		}
+
 		shortlisted = append(shortlisted, model.ScoredCandidate{
 			Candidate: model.Candidate{
 				FsqID:    mv.ID,
 				Name:     mv.Name,
 				Lat:      mv.Lat,
 				Lng:      mv.Lng,
-				Category: "activity",
+				Category: mv.Category,
 			},
 			Score: 1000, // ensure inclusion
 		})
@@ -517,12 +533,16 @@ func (p *Planner) buildResponse(city model.CityInfo, llmResp model.LLMItineraryR
 			// Check if this is a pinned stop
 			if strings.HasPrefix(llmStop.FsqID, "pinned-") {
 				if mv, ok := pinnedLookup[llmStop.FsqID]; ok {
+					cat := mv.Category
+					if cat == "" {
+						cat = "activity"
+					}
 					day.Stops = append(day.Stops, model.PlaceStop{
 						FsqID:       mv.ID,
 						Name:        mv.Name,
 						Latitude:    mv.Lat,
 						Longitude:   mv.Lng,
-						Category:    "activity",
+						Category:    cat,
 						TimeSlot:    llmStop.TimeSlot,
 						Icon:        llmStop.Icon,
 						Description: llmStop.Description,

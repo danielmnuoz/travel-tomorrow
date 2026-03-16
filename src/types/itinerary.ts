@@ -3,6 +3,7 @@ export interface MustVisitPlace {
   name: string;
   latitude: number;
   longitude: number;
+  category?: string;
 }
 
 export interface ItineraryRequest {

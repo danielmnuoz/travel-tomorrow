@@ -47,6 +47,11 @@ func (c *CachedSearcher) SearchPlaces(ctx context.Context, lat, lng float64, rad
 	return candidates, nil
 }
 
+// MatchPlace delegates to the inner searcher (no caching for match lookups).
+func (c *CachedSearcher) MatchPlace(ctx context.Context, name string, lat, lng float64) (*foursquare.PlaceMatch, error) {
+	return c.inner.MatchPlace(ctx, name, lat, lng)
+}
+
 // getFromCache tries to retrieve candidates from Redis. Returns (nil, false) on miss/error.
 func (c *CachedSearcher) getFromCache(ctx context.Context, key string) ([]model.Candidate, bool) {
 	val, err := c.rdb.Get(ctx, key).Result()

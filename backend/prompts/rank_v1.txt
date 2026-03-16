@@ -35,3 +35,4 @@ Rules:
 - Candidates with IDs listed in "pinned_ids" are MUST-INCLUDE stops. They MUST appear in the itinerary. Schedule them into appropriate days and time slots based on their type.
 - You must still use their fsq_id to reference them.
 - If "pinned_day_groups" is provided, all pinned stops in the same group MUST be on the SAME day. Fill the rest of that day with nearby non-pinned candidates.
+- Pinned stops with category "food" count as meals. A day should have at most 3 meals. If a day already has 3 pinned food stops, do not add more food stops to that day. Cafes, bakeries, and dessert spots are snacks and do not count toward the meal limit — they can be added freely.
