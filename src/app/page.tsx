@@ -94,6 +94,7 @@ export default function Home() {
               totalStops={
                 itinerary?.days.reduce((acc, d) => acc + d.stops.length, 0) ?? 0
               }
+              itinerary={itinerary}
             />
           </div>
         ) : null}

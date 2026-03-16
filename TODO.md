@@ -37,11 +37,6 @@
 - Boost curated places in the scorer
 - Feeds into must-visit spots and smart suggestions
 
-## Export to Calendar
-- Generate `.ics` file from itinerary (each stop = calendar event with time slot)
-- Client-side only — build the `.ics` string in JS, trigger download
-- No backend or API keys needed
-
 ## Share Plan (View-Only Link)
 - **Requires Postgres** — itineraries need to be persisted with a unique ID
 - Save itinerary on generation, produce a shareable URL like `/plan/:id`
