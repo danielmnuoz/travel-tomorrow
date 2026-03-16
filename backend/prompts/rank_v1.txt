@@ -32,3 +32,6 @@ Rules:
 - The "theme" should be a short, evocative phrase capturing the day's vibe
 - Descriptions should feel personal and conversational, not like a guidebook
 - Choose "icon" field based on the place's primary purpose: utensils=restaurant/food, coffee=cafe/coffee shop, shopping=retail/market, trees=park/garden/green space, landmark=monument/historic site/square, museum=museum/gallery/exhibition, palette=art gallery/studio, wine=bar/lounge/cocktail bar, beer=pub/beer bar, map-pin=anything else
+- Candidates with IDs listed in "pinned_ids" are MUST-INCLUDE stops. They MUST appear in the itinerary. Schedule them into appropriate days and time slots based on their type.
+- You must still use their fsq_id to reference them.
+- If "pinned_day_groups" is provided, all pinned stops in the same group MUST be on the SAME day. Fill the rest of that day with nearby non-pinned candidates.

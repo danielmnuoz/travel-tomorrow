@@ -20,6 +20,10 @@ export function mapFormToRequest(data: TripFormData): ItineraryRequest {
       data.neighborhoods && data.neighborhoods.length > 0
         ? data.neighborhoods
         : undefined,
+    must_visits:
+      data.mustVisits && data.mustVisits.length > 0
+        ? data.mustVisits
+        : undefined,
   };
 }
 

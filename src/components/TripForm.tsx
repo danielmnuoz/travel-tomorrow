@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { SelectInput, TextInput } from "@/components/ui/Input";
 import Slider from "@/components/ui/Slider";
 import Button from "@/components/ui/Button";
 import FormHint from "@/components/ui/FormHint";
 import { getFormHints } from "@/lib/formHints";
-import type { Neighborhood } from "@/types/itinerary";
+import type { Neighborhood, MustVisitPlace } from "@/types/itinerary";
 
 const CITIES = [
   { value: "nyc", label: "New York City" },
@@ -31,6 +31,14 @@ export interface TripFormData {
   pace: number;
   transport: string;
   neighborhoods?: string[];
+  mustVisits?: MustVisitPlace[];
+}
+
+interface PlaceSearchResult {
+  name: string;
+  display_name: string;
+  latitude: number;
+  longitude: number;
 }
 
 function ChipSelect({
@@ -143,6 +151,13 @@ export default function TripForm({ onSubmit, onCancel }: TripFormProps) {
   const [neighborhoods, setNeighborhoods] = useState<string[]>([]);
   const [availableNeighborhoods, setAvailableNeighborhoods] = useState<Neighborhood[]>([]);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [mustVisits, setMustVisits] = useState<MustVisitPlace[]>([]);
+  const [placeQuery, setPlaceQuery] = useState("");
+  const [placeResults, setPlaceResults] = useState<PlaceSearchResult[]>([]);
+  const [placeSearching, setPlaceSearching] = useState(false);
+  const [showPlaceDropdown, setShowPlaceDropdown] = useState(false);
+  const placeSearchRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
 
   useEffect(() => {
     setNeighborhoods([]);
@@ -152,6 +167,61 @@ export default function TripForm({ onSubmit, onCancel }: TripFormProps) {
       .then((data) => setAvailableNeighborhoods(data.neighborhoods ?? []))
       .catch(() => setAvailableNeighborhoods([]));
   }, [city]);
+
+  const searchPlaces = useCallback(
+    (query: string) => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      if (query.trim().length < 3) {
+        setPlaceResults([]);
+        setShowPlaceDropdown(false);
+        return;
+      }
+      setPlaceSearching(true);
+      debounceRef.current = setTimeout(async () => {
+        const cityLabel = CITIES.find((c) => c.value === city)?.label ?? city;
+        try {
+          const res = await fetch(
+            `/api/places/search?query=${encodeURIComponent(query)}&city=${encodeURIComponent(cityLabel)}`
+          );
+          const data: PlaceSearchResult[] = await res.json();
+          setPlaceResults(data);
+          setShowPlaceDropdown(data.length > 0);
+        } catch {
+          setPlaceResults([]);
+        } finally {
+          setPlaceSearching(false);
+        }
+      }, 1000);
+    },
+    [city]
+  );
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (placeSearchRef.current && !placeSearchRef.current.contains(e.target as Node)) {
+        setShowPlaceDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const addMustVisit = (result: PlaceSearchResult) => {
+    const place: MustVisitPlace = {
+      id: `pinned-${mustVisits.length}`,
+      name: result.name,
+      latitude: result.latitude,
+      longitude: result.longitude,
+    };
+    setMustVisits((prev) => [...prev, place]);
+    setPlaceQuery("");
+    setPlaceResults([]);
+    setShowPlaceDropdown(false);
+  };
+
+  const removeMustVisit = (id: string) => {
+    setMustVisits((prev) => prev.filter((p) => p.id !== id));
+  };
 
   const hints = getFormHints({
     budget,
@@ -180,6 +250,7 @@ export default function TripForm({ onSubmit, onCancel }: TripFormProps) {
       pace,
       transport,
       neighborhoods: neighborhoods.length > 0 ? neighborhoods : undefined,
+      mustVisits: mustVisits.length > 0 ? mustVisits : undefined,
     });
   };
 
@@ -319,64 +390,136 @@ export default function TripForm({ onSubmit, onCancel }: TripFormProps) {
           ))}
         </div>
 
-        {/* Advanced Options — only when neighborhoods exist for the city */}
-        {availableNeighborhoods.length > 0 && (
-          <div className="bg-white rounded-2xl shadow-sm border border-[var(--color-border)]/50">
-            <button
-              type="button"
-              onClick={() => setAdvancedOpen(!advancedOpen)}
-              className="w-full flex items-center justify-between p-6 cursor-pointer"
+        {/* Advanced Options */}
+        <div className="bg-white rounded-2xl shadow-sm border border-[var(--color-border)]/50">
+          <button
+            type="button"
+            onClick={() => setAdvancedOpen(!advancedOpen)}
+            className="w-full flex items-center justify-between p-6 cursor-pointer"
+          >
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-light)]">
+              Advanced Options
+            </h2>
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className={`text-[var(--color-text-muted)] transition-transform duration-200 ${
+                advancedOpen ? "rotate-180" : ""
+              }`}
             >
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-light)]">
-                Advanced Options
-              </h2>
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className={`text-[var(--color-text-muted)] transition-transform duration-200 ${
-                  advancedOpen ? "rotate-180" : ""
-                }`}
-              >
-                <path d="m6 9 6 6 6-6" />
-              </svg>
-            </button>
-            {advancedOpen && (
-              <div className="px-6 pb-6">
-                <ChipSelect
-                  label="Neighborhoods"
-                  options={availableNeighborhoods.map((n) => n.name)}
-                  selected={neighborhoods.map(
-                    (id) =>
-                      availableNeighborhoods.find((n) => n.id === id)?.name ?? id
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </button>
+          {advancedOpen && (
+            <div className="px-6 pb-6">
+              {availableNeighborhoods.length > 0 && (
+                <>
+                  <ChipSelect
+                    label="Neighborhoods"
+                    options={availableNeighborhoods.map((n) => n.name)}
+                    selected={neighborhoods.map(
+                      (id) =>
+                        availableNeighborhoods.find((n) => n.id === id)?.name ?? id
+                    )}
+                    onToggle={(name) => {
+                      const hood = availableNeighborhoods.find(
+                        (n) => n.name === name
+                      );
+                      if (hood) {
+                        setNeighborhoods(toggleChip(neighborhoods, hood.id));
+                      }
+                    }}
+                  />
+                  {neighborhoods.length > 0 && (
+                    <p className="text-xs text-[var(--color-text-muted)] mt-3">
+                      {neighborhoods.length} selected — each day will focus on a
+                      neighborhood area
+                    </p>
                   )}
-                  onToggle={(name) => {
-                    const hood = availableNeighborhoods.find(
-                      (n) => n.name === name
-                    );
-                    if (hood) {
-                      setNeighborhoods(toggleChip(neighborhoods, hood.id));
-                    }
-                  }}
-                />
-                {neighborhoods.length > 0 && (
-                  <p className="text-xs text-[var(--color-text-muted)] mt-3">
-                    {neighborhoods.length} selected — each day will focus on a
-                    neighborhood area
+                </>
+              )}
+                {/* Must-Visit Places */}
+                <div className="mt-6" ref={placeSearchRef}>
+                  <label className="block text-sm font-medium text-[var(--color-text)] mb-3">
+                    Must-Visit Spots
+                  </label>
+                  <p className="text-xs text-[var(--color-text-muted)] mb-3">
+                    Add places you definitely want to visit — we&apos;ll build the rest of the itinerary around them.
                   </p>
-                )}
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={placeQuery}
+                      onChange={(e) => {
+                        setPlaceQuery(e.target.value);
+                        searchPlaces(e.target.value);
+                      }}
+                      onFocus={() => {
+                        if (placeResults.length > 0) setShowPlaceDropdown(true);
+                      }}
+                      placeholder="Search for a place..."
+                      className="w-full px-4 py-2.5 rounded-xl border border-[var(--color-border)] bg-white text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)]"
+                    />
+                    {placeSearching && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <div className="w-4 h-4 border-2 border-[var(--color-primary)]/20 border-t-[var(--color-primary)] rounded-full animate-spin" />
+                      </div>
+                    )}
+                    {showPlaceDropdown && (
+                      <div className="absolute z-20 mt-1 w-full bg-white rounded-xl border border-[var(--color-border)] shadow-lg overflow-hidden">
+                        {placeResults.map((result, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => addMustVisit(result)}
+                            className="w-full text-left px-4 py-3 hover:bg-[var(--color-bg-alt)] transition-colors duration-150 cursor-pointer border-b border-[var(--color-border)]/30 last:border-b-0"
+                          >
+                            <span className="block text-sm font-medium text-[var(--color-text)]">
+                              {result.name}
+                            </span>
+                            <span className="block text-xs text-[var(--color-text-muted)] truncate">
+                              {result.display_name}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  {mustVisits.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      {mustVisits.map((place) => (
+                        <span
+                          key={place.id}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-[var(--color-primary-lighter)] text-[var(--color-primary)]"
+                        >
+                          {place.name}
+                          <button
+                            type="button"
+                            onClick={() => removeMustVisit(place.id)}
+                            className="w-4 h-4 rounded-full hover:bg-[var(--color-primary)]/10 flex items-center justify-center cursor-pointer"
+                          >
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M18 6 6 18" />
+                              <path d="m6 6 12 12" />
+                            </svg>
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 {hints.filter((h) => h.section === "advanced").map((h) => (
                   <FormHint key={h.id} message={h.message} />
                 ))}
               </div>
             )}
           </div>
-        )}
 
         {/* Submit */}
         <Button type="submit" size="lg" className="w-full">

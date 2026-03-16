@@ -1,3 +1,10 @@
+export interface MustVisitPlace {
+  id: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+}
+
 export interface ItineraryRequest {
   city: string;
   days: number;
@@ -8,6 +15,7 @@ export interface ItineraryRequest {
   interests: string[];
   address?: string;
   neighborhoods?: string[];
+  must_visits?: MustVisitPlace[];
 }
 
 export interface Neighborhood {
@@ -40,6 +48,7 @@ export interface PlaceStop {
   description: string;
   rating?: number;
   price?: number;
+  pinned?: boolean;
 }
 
 export interface DayPlan {

@@ -124,10 +124,21 @@ function TimeSection({
                     {stop.category}
                   </span>
                 </div>
-                <SwapButton
-                  onClick={() => onSwap(stop.fsq_id)}
-                  isLoading={refreshingStopId === stop.fsq_id}
-                />
+                {stop.pinned ? (
+                  <span
+                    className="w-7 h-7 rounded-full bg-[var(--color-primary-lighter)] flex items-center justify-center"
+                    title="Pinned stop"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-[var(--color-primary)]">
+                      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 010-5 2.5 2.5 0 010 5z"/>
+                    </svg>
+                  </span>
+                ) : (
+                  <SwapButton
+                    onClick={() => onSwap(stop.fsq_id)}
+                    isLoading={refreshingStopId === stop.fsq_id}
+                  />
+                )}
               </div>
               <h4 className="font-semibold text-sm text-[var(--color-text)] mb-1">
                 {stop.name}

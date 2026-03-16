@@ -7,6 +7,7 @@ import (
 	"log"
 	"math"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/danielmnuoz/travel-tomorrow/backend/internal/config"
@@ -92,6 +93,27 @@ func (p *Planner) Plan(ctx context.Context, req model.ItineraryRequest) (*model.
 
 	log.Printf("planner: shortlisted %d candidates", len(shortlisted))
 
+	// 4b. Inject must-visit stops as high-score candidates
+	for _, mv := range req.MustVisits {
+		shortlisted = append(shortlisted, model.ScoredCandidate{
+			Candidate: model.Candidate{
+				FsqID:    mv.ID,
+				Name:     mv.Name,
+				Lat:      mv.Lat,
+				Lng:      mv.Lng,
+				Category: "activity",
+			},
+			Score: 1000, // ensure inclusion
+		})
+	}
+
+	// 4c. Cluster pinned stops by geographic proximity
+	var pinnedGroups [][]model.MustVisitPlace
+	if len(req.MustVisits) > 0 {
+		pinnedGroups = groupMustVisits(req.MustVisits, req.Days)
+		log.Printf("planner: grouped %d pinned stops into %d day-groups", len(req.MustVisits), len(pinnedGroups))
+	}
+
 	// 5. Build LLM prompt
 	systemPrompt, err := p.loadPrompt("prompts/rank_v1.txt")
 	if err != nil {
@@ -103,7 +125,12 @@ func (p *Planner) Plan(ctx context.Context, req model.ItineraryRequest) (*model.
 		systemPrompt += neighborhoodPromptSuffix
 	}
 
-	userPrompt, err := p.buildUserPrompt(shortlisted, req, neighborhoodGroups)
+	// Append pinned-grouping instructions if applicable
+	if len(pinnedGroups) > 0 {
+		systemPrompt += pinnedGroupPromptSuffix
+	}
+
+	userPrompt, err := p.buildUserPrompt(shortlisted, req, neighborhoodGroups, pinnedGroups)
 	if err != nil {
 		return nil, fmt.Errorf("build user prompt: %w", err)
 	}
@@ -128,12 +155,17 @@ func (p *Planner) Plan(ctx context.Context, req model.ItineraryRequest) (*model.
 	}
 
 	// 8. Merge LLM output with full candidate data
-	resp := p.buildResponse(city, llmResp, shortlisted)
+	resp := p.buildResponse(city, llmResp, shortlisted, req.MustVisits)
 	return resp, nil
 }
 
 // RefreshStop replaces a single stop in a day with a new one.
 func (p *Planner) RefreshStop(ctx context.Context, req model.RefreshStopRequest) (*model.RefreshStopResponse, error) {
+	// Guard: cannot refresh a pinned stop
+	if strings.HasPrefix(req.StopFsqID, "pinned-") {
+		return nil, fmt.Errorf("cannot refresh a pinned stop")
+	}
+
 	// 1. Resolve city
 	city, ok := model.Cities[req.Preferences.City]
 	if !ok {
@@ -343,8 +375,32 @@ type neighborhoodAssignment struct {
 	Neighborhoods []string `json:"neighborhoods"`
 }
 
+// pinnedDayGroup tells the LLM which pinned stops must be on the same day.
+type pinnedDayGroup struct {
+	PinnedIDs []string `json:"pinned_ids"`
+}
+
 // buildUserPrompt creates the JSON user message with shortlisted candidates and prefs.
-func (p *Planner) buildUserPrompt(shortlisted []model.ScoredCandidate, req model.ItineraryRequest, neighborhoodGroups [][]model.Neighborhood) (string, error) {
+func (p *Planner) buildUserPrompt(shortlisted []model.ScoredCandidate, req model.ItineraryRequest, neighborhoodGroups [][]model.Neighborhood, pinnedGroups [][]model.MustVisitPlace) (string, error) {
+	// Collect pinned IDs
+	var pinnedIDs []string
+	for _, mv := range req.MustVisits {
+		pinnedIDs = append(pinnedIDs, mv.ID)
+	}
+
+	// Build pinned day groups for the prompt
+	var pdGroups []pinnedDayGroup
+	for _, group := range pinnedGroups {
+		if len(group) < 2 {
+			continue // solo pinned stops don't need grouping instructions
+		}
+		ids := make([]string, len(group))
+		for i, mv := range group {
+			ids[i] = mv.ID
+		}
+		pdGroups = append(pdGroups, pinnedDayGroup{PinnedIDs: ids})
+	}
+
 	if len(neighborhoodGroups) > 0 {
 		assignments := make([]neighborhoodAssignment, len(neighborhoodGroups))
 		for i, group := range neighborhoodGroups {
@@ -356,13 +412,17 @@ func (p *Planner) buildUserPrompt(shortlisted []model.ScoredCandidate, req model
 		}
 
 		prompt := struct {
-			Preferences              model.ItineraryRequest `json:"preferences"`
-			Candidates               []candidateForLLM      `json:"candidates"`
+			Preferences              model.ItineraryRequest   `json:"preferences"`
+			Candidates               []candidateForLLM        `json:"candidates"`
 			NeighborhoodAssignments  []neighborhoodAssignment `json:"neighborhood_assignments"`
+			PinnedIDs                []string                 `json:"pinned_ids,omitempty"`
+			PinnedDayGroups          []pinnedDayGroup         `json:"pinned_day_groups,omitempty"`
 		}{
 			Preferences:             req,
 			Candidates:              shortlistedToCandidates(shortlisted),
 			NeighborhoodAssignments: assignments,
+			PinnedIDs:               pinnedIDs,
+			PinnedDayGroups:         pdGroups,
 		}
 
 		data, err := json.Marshal(prompt)
@@ -373,11 +433,15 @@ func (p *Planner) buildUserPrompt(shortlisted []model.ScoredCandidate, req model
 	}
 
 	prompt := struct {
-		Preferences model.ItineraryRequest `json:"preferences"`
-		Candidates  []candidateForLLM      `json:"candidates"`
+		Preferences     model.ItineraryRequest `json:"preferences"`
+		Candidates      []candidateForLLM      `json:"candidates"`
+		PinnedIDs       []string               `json:"pinned_ids,omitempty"`
+		PinnedDayGroups []pinnedDayGroup       `json:"pinned_day_groups,omitempty"`
 	}{
-		Preferences: req,
-		Candidates:  shortlistedToCandidates(shortlisted),
+		Preferences:     req,
+		Candidates:      shortlistedToCandidates(shortlisted),
+		PinnedIDs:       pinnedIDs,
+		PinnedDayGroups: pdGroups,
 	}
 
 	data, err := json.Marshal(prompt)
@@ -428,11 +492,17 @@ func (p *Planner) buildRefreshUserPrompt(shortlisted []model.ScoredCandidate, re
 }
 
 // buildResponse merges LLM output with full candidate data to produce the API response.
-func (p *Planner) buildResponse(city model.CityInfo, llmResp model.LLMItineraryResponse, shortlisted []model.ScoredCandidate) *model.ItineraryResponse {
+func (p *Planner) buildResponse(city model.CityInfo, llmResp model.LLMItineraryResponse, shortlisted []model.ScoredCandidate, mustVisits []model.MustVisitPlace) *model.ItineraryResponse {
 	// Build lookup map: fsq_id → ScoredCandidate
 	lookup := make(map[string]model.ScoredCandidate, len(shortlisted))
 	for _, sc := range shortlisted {
 		lookup[sc.FsqID] = sc
+	}
+
+	// Build lookup for must-visit places
+	pinnedLookup := make(map[string]model.MustVisitPlace, len(mustVisits))
+	for _, mv := range mustVisits {
+		pinnedLookup[mv.ID] = mv
 	}
 
 	var days []model.DayPlan
@@ -444,6 +514,24 @@ func (p *Planner) buildResponse(city model.CityInfo, llmResp model.LLMItineraryR
 		}
 
 		for _, llmStop := range llmDay.Stops {
+			// Check if this is a pinned stop
+			if strings.HasPrefix(llmStop.FsqID, "pinned-") {
+				if mv, ok := pinnedLookup[llmStop.FsqID]; ok {
+					day.Stops = append(day.Stops, model.PlaceStop{
+						FsqID:       mv.ID,
+						Name:        mv.Name,
+						Latitude:    mv.Lat,
+						Longitude:   mv.Lng,
+						Category:    "activity",
+						TimeSlot:    llmStop.TimeSlot,
+						Icon:        llmStop.Icon,
+						Description: llmStop.Description,
+						Pinned:      true,
+					})
+					continue
+				}
+			}
+
 			sc, ok := lookup[llmStop.FsqID]
 			if !ok {
 				log.Printf("planner: LLM referenced unknown fsq_id %q, skipping", llmStop.FsqID)
@@ -632,6 +720,85 @@ func groupDistance(a, b []model.Neighborhood) float64 {
 	for _, na := range a {
 		for _, nb := range b {
 			d := haversine(na.Lat, na.Lng, nb.Lat, nb.Lng)
+			if d < minDist {
+				minDist = d
+			}
+		}
+	}
+	return minDist
+}
+
+// --- Pinned stop helpers ---
+
+const pinnedGroupPromptSuffix = `
+
+Additional instructions for pinned stop grouping:
+- The "pinned_day_groups" field lists groups of pinned stops that are geographically close together.
+- All pinned stops within the same group MUST be scheduled on the SAME day.
+- You choose which day number and time slots for each group.
+- Fill in the rest of the day with nearby non-pinned candidates.
+- Solo pinned stops (not in any group) can be placed on any day that makes geographic sense.
+`
+
+// groupMustVisits clusters pinned stops by geographic proximity, merging the closest
+// groups until we have at most `days` groups. Same algorithm as groupNeighborhoods.
+func groupMustVisits(mustVisits []model.MustVisitPlace, days int) [][]model.MustVisitPlace {
+	if len(mustVisits) == 0 {
+		return nil
+	}
+
+	// Start with each pinned stop in its own group
+	groups := make([][]model.MustVisitPlace, len(mustVisits))
+	for i, mv := range mustVisits {
+		groups[i] = []model.MustVisitPlace{mv}
+	}
+
+	// Merge closest groups until we have at most `days` groups
+	for len(groups) > days {
+		minDist := math.MaxFloat64
+		mergeA, mergeB := 0, 1
+		for i := 0; i < len(groups); i++ {
+			for j := i + 1; j < len(groups); j++ {
+				d := mustVisitGroupDistance(groups[i], groups[j])
+				if d < minDist {
+					minDist = d
+					mergeA, mergeB = i, j
+				}
+			}
+		}
+		groups[mergeA] = append(groups[mergeA], groups[mergeB]...)
+		groups = append(groups[:mergeB], groups[mergeB+1:]...)
+	}
+
+	// Also merge groups that are within walking distance (1500m) even if we have room for more days.
+	// This ensures geographically close pins always land on the same day.
+	merged := true
+	for merged {
+		merged = false
+		for i := 0; i < len(groups); i++ {
+			for j := i + 1; j < len(groups); j++ {
+				if mustVisitGroupDistance(groups[i], groups[j]) < 1500 {
+					groups[i] = append(groups[i], groups[j]...)
+					groups = append(groups[:j], groups[j+1:]...)
+					merged = true
+					break
+				}
+			}
+			if merged {
+				break
+			}
+		}
+	}
+
+	return groups
+}
+
+// mustVisitGroupDistance returns the minimum distance between any two stops across two groups.
+func mustVisitGroupDistance(a, b []model.MustVisitPlace) float64 {
+	minDist := math.MaxFloat64
+	for _, ma := range a {
+		for _, mb := range b {
+			d := haversine(ma.Lat, ma.Lng, mb.Lat, mb.Lng)
 			if d < minDist {
 				minDist = d
 			}

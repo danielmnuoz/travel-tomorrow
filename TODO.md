@@ -31,12 +31,12 @@ Current state: places are scored by distance from a single city-center point, wi
 
 ## ~~Neighborhood Selection~~ (Implemented)
 
-## Must-Visit Spots
-- User can specify places they definitely want to visit
-- Input: curated list suggestions + free-text search that hits Foursquare
-- These get injected into the shortlist as pinned/locked candidates
-- LLM prompt says "these stops MUST appear, schedule around them"
-- Natural extension: "here are my 7 places, organize the trip for me" (advanced input mode)
+## ~~Must-Visit Spots~~ (Implemented)
+- ~~User can specify places they definitely want to visit~~
+- ~~Input: curated list suggestions + free-text search that hits Foursquare~~
+- ~~These get injected into the shortlist as pinned/locked candidates~~
+- ~~LLM prompt says "these stops MUST appear, schedule around them"~~
+- ~~Natural extension: "here are my 7 places, organize the trip for me" (advanced input mode)~~
 
 ## Curated Lists
 - Maintain lists of notable places per city (Michelin picks, personal recommendations, etc.)

@@ -15,16 +15,24 @@ var Cities = map[string]CityInfo{
 
 // --- API Request / Response ---
 
+type MustVisitPlace struct {
+	ID   string  `json:"id"`
+	Name string  `json:"name"`
+	Lat  float64 `json:"latitude"`
+	Lng  float64 `json:"longitude"`
+}
+
 type ItineraryRequest struct {
-	City           string   `json:"city"`
-	Days           int      `json:"days"`
-	Budget         int      `json:"budget"`
-	Pace           int      `json:"pace"`
-	Transport      string   `json:"transport"`
-	FoodStyles     []string `json:"food_styles"`
-	Interests      []string `json:"interests"`
-	Address        string   `json:"address,omitempty"`
-	Neighborhoods  []string `json:"neighborhoods,omitempty"`
+	City           string           `json:"city"`
+	Days           int              `json:"days"`
+	Budget         int              `json:"budget"`
+	Pace           int              `json:"pace"`
+	Transport      string           `json:"transport"`
+	FoodStyles     []string         `json:"food_styles"`
+	Interests      []string         `json:"interests"`
+	Address        string           `json:"address,omitempty"`
+	Neighborhoods  []string         `json:"neighborhoods,omitempty"`
+	MustVisits     []MustVisitPlace `json:"must_visits,omitempty"`
 }
 
 type ItineraryResponse struct {
@@ -50,6 +58,7 @@ type PlaceStop struct {
 	Description string  `json:"description"`
 	Rating      float64 `json:"rating,omitempty"`
 	Price       int     `json:"price,omitempty"`
+	Pinned      bool    `json:"pinned,omitempty"`
 }
 
 // --- Refresh Stop ---
