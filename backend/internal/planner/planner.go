@@ -87,9 +87,12 @@ func (p *Planner) Plan(ctx context.Context, req model.ItineraryRequest) (*model.
 
 	log.Printf("planner: fetched %d candidates across %d categories", len(candidates), len(categoryIDs))
 
-	// 4. Score & shortlist
+	// 4. Score, proximity rescore & shortlist
 	scored := scorer.Score(candidates, req)
-	shortlisted := scorer.Shortlist(scored, shortlistSize*len(categoryIDs))
+	// Take an oversized pool for proximity rescoring, then cut to final size.
+	oversized := scorer.Shortlist(scored, 2*shortlistSize*len(categoryIDs))
+	rescored := scorer.ProximityRescore(oversized, req)
+	shortlisted := scorer.Shortlist(rescored, shortlistSize*len(categoryIDs))
 
 	log.Printf("planner: shortlisted %d candidates", len(shortlisted))
 
@@ -739,7 +742,7 @@ func groupDistance(a, b []model.Neighborhood) float64 {
 	minDist := math.MaxFloat64
 	for _, na := range a {
 		for _, nb := range b {
-			d := haversine(na.Lat, na.Lng, nb.Lat, nb.Lng)
+			d := scorer.Haversine(na.Lat, na.Lng, nb.Lat, nb.Lng)
 			if d < minDist {
 				minDist = d
 			}
@@ -818,7 +821,7 @@ func mustVisitGroupDistance(a, b []model.MustVisitPlace) float64 {
 	minDist := math.MaxFloat64
 	for _, ma := range a {
 		for _, mb := range b {
-			d := haversine(ma.Lat, ma.Lng, mb.Lat, mb.Lng)
+			d := scorer.Haversine(ma.Lat, ma.Lng, mb.Lat, mb.Lng)
 			if d < minDist {
 				minDist = d
 			}
@@ -827,14 +830,3 @@ func mustVisitGroupDistance(a, b []model.MustVisitPlace) float64 {
 	return minDist
 }
 
-// haversine returns the distance in meters between two lat/lng points.
-func haversine(lat1, lng1, lat2, lng2 float64) float64 {
-	const R = 6371000 // Earth radius in meters
-	dLat := (lat2 - lat1) * math.Pi / 180
-	dLng := (lng2 - lng1) * math.Pi / 180
-	a := math.Sin(dLat/2)*math.Sin(dLat/2) +
-		math.Cos(lat1*math.Pi/180)*math.Cos(lat2*math.Pi/180)*
-			math.Sin(dLng/2)*math.Sin(dLng/2)
-	c := 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
-	return R * c
-}

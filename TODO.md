@@ -7,17 +7,11 @@
 
 # Scoring Algorithm Improvements
 
-Current state: places are scored by distance from a single city-center point, with basic category matching. No premium Foursquare fields (rating, price, popularity) are used yet.
-
 ## TODO
 
-1. ~~**Neighborhood clustering**~~ — done: neighborhood selection scopes Foursquare to selected areas with tighter radius
-2. **Premium fields (rating, price, popularity)** — re-enable when Foursquare credits available
-3. **Time-aware scoring** — boost cafés for morning, restaurants for evening, etc.
-4. **Interest affinity** — weight candidates higher when they directly match user's stated interests
-5. **Distance between stops** — score based on how far apart consecutive stops would be, not just distance from center
-6. **Weather / seasonal** — boost outdoor places in good weather, indoor in bad
-7. **User history / freshness** — penalize previously recommended places (requires Postgres)
+1. **Premium fields (rating, price, popularity)** — re-enable when Foursquare credits available
+2. **Weather / seasonal** — boost outdoor places in good weather, indoor in bad
+3. **User history / freshness** — penalize previously recommended places (requires Postgres)
 
 ---
 
@@ -28,15 +22,6 @@ Current state: places are scored by distance from a single city-center point, wi
 ---
 
 # Feature Ideas
-
-## ~~Neighborhood Selection~~ (Implemented)
-
-## ~~Must-Visit Spots~~ (Implemented)
-- ~~User can specify places they definitely want to visit~~
-- ~~Input: curated list suggestions + free-text search that hits Foursquare~~
-- ~~These get injected into the shortlist as pinned/locked candidates~~
-- ~~LLM prompt says "these stops MUST appear, schedule around them"~~
-- ~~Natural extension: "here are my 7 places, organize the trip for me" (advanced input mode)~~
 
 ## User Category Overrides & Meal Controls
 - Optional user-assigned category per pinned stop: Museum, Quick Sight (park/viewpoint), Snack/Dessert, Meal, Nightlife, Shopping
@@ -82,10 +67,3 @@ Current state: places are scored by distance from a single city-center point, wi
 - Goal: let users fine-tune results post-generation without re-running the LLM
 - Consider: react-beautiful-dnd or dnd-kit for drag interactions
 
-## ~~Rule-Based Form Suggestions~~ (Implemented)
-- ~~Frontend-only nudges during form configuration~~
-- ~~Examples:~~
-  - ~~No food style selected → "We'll default to local eats"~~
-  - ~~Only nightlife selected → "Want to add food spots too?"~~
-  - ~~Budget $ + Elegant food → gentle mismatch warning~~
-- ~~Simple conditionals, no LLM calls during form filling~~
