@@ -1,15 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { arrayMove } from "@dnd-kit/sortable";
 import Navbar from "@/components/Navbar";
 import TripForm from "@/components/TripForm";
 import TripSummary from "@/components/TripSummary";
 import DayCard from "@/components/DayCard";
 import MapContainer from "@/components/MapContainer";
 import DayDetailView from "@/components/DayDetailView";
+import RemapButton from "@/components/RemapButton";
+import UndoToast from "@/components/UndoToast";
 import { fetchItinerary, mapFormToRequest, refreshStop } from "@/services/itinerary";
-import type { ItineraryResponse } from "@/types/itinerary";
+import type { ItineraryResponse, PlaceStop } from "@/types/itinerary";
 import type { TripFormData } from "@/components/TripForm";
+
+interface DeletedStopInfo {
+  dayNumber: number;
+  stop: PlaceStop;
+  index: number;
+}
 
 export default function Home() {
   const [formData, setFormData] = useState<TripFormData | null>(null);
@@ -20,11 +29,26 @@ export default function Home() {
   const [selectedDayNumber, setSelectedDayNumber] = useState(1);
   const [detailDayNumber, setDetailDayNumber] = useState<number | null>(null);
 
+  // Deferred map state
+  const [mapStops, setMapStops] = useState<PlaceStop[]>([]);
+  const [mapDirty, setMapDirty] = useState(false);
+
+  // Undo delete state
+  const [deletedStopInfo, setDeletedStopInfo] = useState<DeletedStopInfo | null>(null);
+
   const showResults = itinerary !== null && !isLoading && !error;
   const selectedDay = itinerary?.days.find((d) => d.day_number === selectedDayNumber);
   const detailDay = detailDayNumber
     ? itinerary?.days.find((d) => d.day_number === detailDayNumber)
     : null;
+
+  // Sync mapStops when selected day changes or itinerary first loads
+  useEffect(() => {
+    if (selectedDay) {
+      setMapStops(selectedDay.stops);
+      setMapDirty(false);
+    }
+  }, [selectedDayNumber, itinerary === null]);
 
   const handleFormSubmit = async (data: TripFormData) => {
     setFormData(data);
@@ -53,7 +77,7 @@ export default function Home() {
     setIsFormExpanded(true);
   };
 
-  const handleStopRefreshed = (dayNumber: number, oldFsqId: string, newStop: ItineraryResponse["days"][0]["stops"][0]) => {
+  const handleStopRefreshed = (dayNumber: number, oldFsqId: string, newStop: PlaceStop) => {
     setItinerary((prev) => {
       if (!prev) return prev;
       return {
@@ -69,7 +93,150 @@ export default function Home() {
         }),
       };
     });
+    if (dayNumber === selectedDayNumber) setMapDirty(true);
   };
+
+  const handleEditStop = useCallback((dayNumber: number, fsqId: string, updates: Partial<Pick<PlaceStop, "name" | "time_slot" | "description">>) => {
+    setItinerary((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        days: prev.days.map((day) => {
+          if (day.day_number !== dayNumber) return day;
+          return {
+            ...day,
+            stops: day.stops.map((stop) =>
+              stop.fsq_id === fsqId ? { ...stop, ...updates } : stop
+            ),
+          };
+        }),
+      };
+    });
+    if (dayNumber === selectedDayNumber) setMapDirty(true);
+  }, [selectedDayNumber]);
+
+  const handleDeleteStop = useCallback((dayNumber: number, fsqId: string) => {
+    setItinerary((prev) => {
+      if (!prev) return prev;
+      const day = prev.days.find((d) => d.day_number === dayNumber);
+      const stopIndex = day?.stops.findIndex((s) => s.fsq_id === fsqId) ?? -1;
+      const stop = day?.stops[stopIndex];
+
+      if (stop && stopIndex !== -1) {
+        setDeletedStopInfo({ dayNumber, stop, index: stopIndex });
+      }
+
+      return {
+        ...prev,
+        days: prev.days.map((day) => {
+          if (day.day_number !== dayNumber) return day;
+          return {
+            ...day,
+            stops: day.stops.filter((s) => s.fsq_id !== fsqId),
+          };
+        }),
+      };
+    });
+    if (dayNumber === selectedDayNumber) setMapDirty(true);
+  }, [selectedDayNumber]);
+
+  const handleUndoDelete = useCallback(() => {
+    if (!deletedStopInfo) return;
+    const { dayNumber, stop, index } = deletedStopInfo;
+    setItinerary((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        days: prev.days.map((day) => {
+          if (day.day_number !== dayNumber) return day;
+          const newStops = [...day.stops];
+          newStops.splice(index, 0, stop);
+          return { ...day, stops: newStops };
+        }),
+      };
+    });
+    if (dayNumber === selectedDayNumber) setMapDirty(true);
+    setDeletedStopInfo(null);
+  }, [deletedStopInfo, selectedDayNumber]);
+
+  const handleReorderStop = useCallback((dayNumber: number, timeSlot: string, oldIndex: number, newIndex: number) => {
+    setItinerary((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        days: prev.days.map((day) => {
+          if (day.day_number !== dayNumber) return day;
+          // Get stops in this time slot and their original indices in the full array
+          const slotIndices: number[] = [];
+          day.stops.forEach((s, i) => {
+            if (s.time_slot.toLowerCase() === timeSlot) slotIndices.push(i);
+          });
+          // Reorder within the slot
+          const reordered = arrayMove(
+            slotIndices.map((i) => day.stops[i]),
+            oldIndex,
+            newIndex
+          );
+          // Rebuild stops array
+          const newStops = [...day.stops];
+          slotIndices.forEach((origIdx, i) => {
+            newStops[origIdx] = reordered[i];
+          });
+          return { ...day, stops: newStops };
+        }),
+      };
+    });
+    if (dayNumber === selectedDayNumber) setMapDirty(true);
+  }, [selectedDayNumber]);
+
+  const handleMoveStopToSlot = useCallback((dayNumber: number, fsqId: string, newTimeSlot: string) => {
+    setItinerary((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        days: prev.days.map((day) => {
+          if (day.day_number !== dayNumber) return day;
+          return {
+            ...day,
+            stops: day.stops.map((stop) =>
+              stop.fsq_id === fsqId ? { ...stop, time_slot: newTimeSlot } : stop
+            ),
+          };
+        }),
+      };
+    });
+    if (dayNumber === selectedDayNumber) setMapDirty(true);
+  }, [selectedDayNumber]);
+
+  const handleMoveStopToDay = useCallback((fromDay: number, fsqId: string, toDay: number) => {
+    setItinerary((prev) => {
+      if (!prev) return prev;
+      const sourceDay = prev.days.find((d) => d.day_number === fromDay);
+      const stop = sourceDay?.stops.find((s) => s.fsq_id === fsqId);
+      if (!stop) return prev;
+
+      return {
+        ...prev,
+        days: prev.days.map((day) => {
+          if (day.day_number === fromDay) {
+            return { ...day, stops: day.stops.filter((s) => s.fsq_id !== fsqId) };
+          }
+          if (day.day_number === toDay) {
+            return { ...day, stops: [...day.stops, stop] };
+          }
+          return day;
+        }),
+      };
+    });
+    if (fromDay === selectedDayNumber || toDay === selectedDayNumber) setMapDirty(true);
+  }, [selectedDayNumber]);
+
+  const handleRemap = useCallback(() => {
+    if (selectedDay) {
+      setMapStops(selectedDay.stops);
+      setMapDirty(false);
+    }
+  }, [selectedDay]);
 
   return (
     <>
@@ -143,8 +310,9 @@ export default function Home() {
             {/* Main content: split layout */}
             <div className="flex flex-col lg:flex-row h-[calc(100vh-14rem)]">
               {/* Map (mobile: top) */}
-              <div className="lg:hidden h-64 p-3">
-                <MapContainer stops={selectedDay.stops} />
+              <div className="lg:hidden h-64 p-3 relative">
+                <MapContainer stops={mapStops} />
+                {mapDirty && <RemapButton onClick={handleRemap} />}
               </div>
 
               {/* Left panel: day cards */}
@@ -156,14 +324,19 @@ export default function Home() {
                     isSelected={selectedDayNumber === day.day_number}
                     onSelect={() => setSelectedDayNumber(day.day_number)}
                     onViewDetails={() => setDetailDayNumber(day.day_number)}
+                    onEditStop={handleEditStop}
+                    onDeleteStop={handleDeleteStop}
+                    onMoveStopToDay={handleMoveStopToDay}
+                    totalDays={itinerary.days.length}
                   />
                 ))}
               </div>
 
               {/* Right panel: map (desktop only) */}
               <div className="hidden lg:block flex-1 p-4 pl-0">
-                <div className="h-full sticky top-0">
-                  <MapContainer stops={selectedDay.stops} />
+                <div className="h-full sticky top-0 relative">
+                  <MapContainer stops={mapStops} />
+                  {mapDirty && <RemapButton onClick={handleRemap} />}
                 </div>
               </div>
             </div>
@@ -178,6 +351,21 @@ export default function Home() {
           onClose={() => setDetailDayNumber(null)}
           preferences={mapFormToRequest(formData)}
           onStopRefreshed={handleStopRefreshed}
+          onEditStop={handleEditStop}
+          onDeleteStop={handleDeleteStop}
+          onReorderStop={handleReorderStop}
+          onMoveStopToSlot={handleMoveStopToSlot}
+          onMoveStopToDay={handleMoveStopToDay}
+          totalDays={itinerary?.days.length ?? 0}
+        />
+      )}
+
+      {/* Undo toast */}
+      {deletedStopInfo && (
+        <UndoToast
+          message={`"${deletedStopInfo.stop.name}" removed`}
+          onUndo={handleUndoDelete}
+          onDismiss={() => setDeletedStopInfo(null)}
         />
       )}
     </>

@@ -152,6 +152,7 @@ export default function TripForm({ onSubmit, onCancel }: TripFormProps) {
   const [availableNeighborhoods, setAvailableNeighborhoods] = useState<Neighborhood[]>([]);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [mustVisits, setMustVisits] = useState<MustVisitPlace[]>([]);
+  const mustVisitCounter = useRef(0);
   const [placeQuery, setPlaceQuery] = useState("");
   const [placeResults, setPlaceResults] = useState<PlaceSearchResult[]>([]);
   const [placeSearching, setPlaceSearching] = useState(false);
@@ -208,7 +209,7 @@ export default function TripForm({ onSubmit, onCancel }: TripFormProps) {
 
   const addMustVisit = (result: PlaceSearchResult) => {
     const place: MustVisitPlace = {
-      id: `pinned-${mustVisits.length}`,
+      id: `pinned-${mustVisitCounter.current++}`,
       name: result.name,
       latitude: result.latitude,
       longitude: result.longitude,

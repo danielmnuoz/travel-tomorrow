@@ -1,13 +1,19 @@
 "use client";
 
-import type { DayPlan } from "@/types/itinerary";
+import { useState } from "react";
+import type { DayPlan, PlaceStop } from "@/types/itinerary";
 import StopItem from "@/components/StopItem";
+import type { EditValues } from "@/components/StopItem";
 
 interface DayCardProps {
   day: DayPlan;
   isSelected: boolean;
   onSelect: () => void;
   onViewDetails: () => void;
+  onEditStop?: (dayNumber: number, fsqId: string, updates: Partial<Pick<PlaceStop, "name" | "time_slot" | "description">>) => void;
+  onDeleteStop?: (dayNumber: number, fsqId: string) => void;
+  onMoveStopToDay?: (fromDay: number, fsqId: string, toDay: number) => void;
+  totalDays?: number;
 }
 
 export default function DayCard({
@@ -15,7 +21,42 @@ export default function DayCard({
   isSelected,
   onSelect,
   onViewDetails,
+  onEditStop,
+  onDeleteStop,
+  onMoveStopToDay,
+  totalDays,
 }: DayCardProps) {
+  const [editingStopId, setEditingStopId] = useState<string | null>(null);
+  const [editValues, setEditValues] = useState<EditValues | null>(null);
+
+  const slotOrder: Record<string, number> = { morning: 0, afternoon: 1, evening: 2 };
+  const sortedStops = [...day.stops].sort(
+    (a, b) => (slotOrder[a.time_slot.toLowerCase()] ?? 3) - (slotOrder[b.time_slot.toLowerCase()] ?? 3)
+  );
+
+  const handleStartEdit = (fsqId: string) => {
+    const stop = day.stops.find((s) => s.fsq_id === fsqId);
+    if (!stop) return;
+    setEditingStopId(fsqId);
+    setEditValues({
+      name: stop.name,
+      time_slot: stop.time_slot.toLowerCase(),
+      description: stop.description,
+    });
+  };
+
+  const handleEditSave = () => {
+    if (!editingStopId || !editValues || !onEditStop) return;
+    onEditStop(day.day_number, editingStopId, editValues);
+    setEditingStopId(null);
+    setEditValues(null);
+  };
+
+  const handleEditCancel = () => {
+    setEditingStopId(null);
+    setEditValues(null);
+  };
+
   return (
     <div
       onClick={onSelect}
@@ -54,9 +95,28 @@ export default function DayCard({
 
       {/* Stops */}
       <div className="divide-y divide-[var(--color-border)]/50">
-        {day.stops.map((stop) => (
-          <StopItem key={stop.fsq_id} stop={stop} />
-        ))}
+        {day.stops.length > 0 ? (
+          sortedStops.map((stop) => (
+            <StopItem
+              key={stop.fsq_id}
+              stop={stop}
+              isEditing={editingStopId === stop.fsq_id}
+              editValues={editingStopId === stop.fsq_id ? editValues ?? undefined : undefined}
+              onEdit={onEditStop ? () => handleStartEdit(stop.fsq_id) : undefined}
+              onDelete={onDeleteStop ? () => onDeleteStop(day.day_number, stop.fsq_id) : undefined}
+              onEditChange={setEditValues}
+              onEditSave={handleEditSave}
+              onEditCancel={handleEditCancel}
+              onMoveToDay={onMoveStopToDay ? (toDay: number) => onMoveStopToDay(day.day_number, stop.fsq_id, toDay) : undefined}
+              dayNumber={day.day_number}
+              totalDays={totalDays}
+            />
+          ))
+        ) : (
+          <p className="text-sm text-[var(--color-text-light)] py-4 text-center">
+            No stops planned
+          </p>
+        )}
       </div>
 
       {/* View Details button */}
