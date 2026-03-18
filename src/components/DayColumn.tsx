@@ -55,7 +55,7 @@ export default function DayColumn({
 
   return (
     <div
-      className={`w-80 shrink-0 flex flex-col rounded-2xl border bg-white overflow-hidden transition-all duration-200 animate-slide-in-right snap-start ${
+      className={`w-[480px] shrink-0 flex flex-col rounded-2xl border bg-white overflow-hidden transition-all duration-200 animate-slide-in-right snap-start ${
         isActive
           ? "border-[var(--color-primary)]/30 shadow-md"
           : "border-[var(--color-border)]/60 hover:border-[var(--color-border)]"

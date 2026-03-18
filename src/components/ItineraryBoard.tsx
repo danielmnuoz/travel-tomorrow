@@ -288,7 +288,7 @@ export default function ItineraryBoard({
             {/* Add Day ghost column */}
             <button
               onClick={onAddDay}
-              className="w-80 shrink-0 flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-[var(--color-border)] text-[var(--color-text-light)] hover:border-[var(--color-primary)]/40 hover:text-[var(--color-primary)] hover:bg-[var(--color-primary-wash)] transition-all duration-200 cursor-pointer snap-start"
+              className="w-[480px] shrink-0 flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-[var(--color-border)] text-[var(--color-text-light)] hover:border-[var(--color-primary)]/40 hover:text-[var(--color-primary)] hover:bg-[var(--color-primary-wash)] transition-all duration-200 cursor-pointer snap-start"
             >
               <div className="w-10 h-10 rounded-xl bg-[var(--color-bg-alt)] flex items-center justify-center">
                 <Plus size={20} strokeWidth={1.5} />
