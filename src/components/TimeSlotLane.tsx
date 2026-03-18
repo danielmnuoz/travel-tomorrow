@@ -5,16 +5,17 @@ import {
   SortableContext,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
+import { Sunrise, Sun, Sunset } from "lucide-react";
 import KanbanStopCard from "@/components/KanbanStopCard";
 import type { PlaceStop } from "@/types/itinerary";
 
 const timeConfig: Record<
   string,
-  { label: string; icon: string; color: string }
+  { label: string; icon: typeof Sunrise; color: string }
 > = {
-  morning: { label: "Morning", icon: "\u{1F305}", color: "#E07A5F" },
-  afternoon: { label: "Afternoon", icon: "\u{2600}\u{FE0F}", color: "#3D85C6" },
-  evening: { label: "Evening", icon: "\u{1F307}", color: "#7B61A6" },
+  morning: { label: "Morning", icon: Sunrise, color: "#E07A5F" },
+  afternoon: { label: "Afternoon", icon: Sun, color: "#3D85C6" },
+  evening: { label: "Evening", icon: Sunset, color: "#7B61A6" },
 };
 
 interface TimeSlotLaneProps {
@@ -50,7 +51,7 @@ export default function TimeSlotLane({
     <div className="mb-3">
       {/* Lane label */}
       <div className="flex items-center gap-2 mb-1.5 px-1">
-        <span className="text-sm">{config?.icon}</span>
+        {config && <config.icon size={14} strokeWidth={1.5} style={{ color: config.color }} />}
         <span
           className="text-[11px] font-semibold uppercase tracking-wider"
           style={{ color: config?.color }}
