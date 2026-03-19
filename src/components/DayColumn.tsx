@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-import { ChevronDown } from "lucide-react";
 import TimeSlotLane from "@/components/TimeSlotLane";
 import AddPlaceSearch from "@/components/AddPlaceSearch";
 import type { DayPlan, PlaceStop } from "@/types/itinerary";
@@ -47,7 +45,6 @@ export default function DayColumn({
   onMoveStopToDay,
   onAddStop,
 }: DayColumnProps) {
-  const [expanded, setExpanded] = useState(day.neighborhood === "");
   const accentColor = DAY_COLORS[index % DAY_COLORS.length];
 
   const stopsForSlot = (slot: string) =>
@@ -68,14 +65,7 @@ export default function DayColumn({
       onClick={onSetActive}
     >
       {/* Header */}
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          setExpanded(!expanded);
-          onSetActive();
-        }}
-        className="flex items-center justify-between px-4 py-3 cursor-pointer w-full text-left"
-      >
+      <div className="flex items-center justify-between px-4 py-3">
         <div className="flex items-center gap-3 min-w-0">
           <span
             className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold text-white shrink-0"
@@ -92,45 +82,33 @@ export default function DayColumn({
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0 ml-2">
-          <span className="text-[10px] font-medium text-[var(--color-text-light)] bg-[var(--color-bg-alt)] px-2 py-0.5 rounded-full">
-            {day.stops.length}
-          </span>
-          <ChevronDown
-            size={14}
-            className={`text-[var(--color-text-light)] transition-transform duration-200 ${
-              expanded ? "rotate-180" : ""
-            }`}
-          />
-        </div>
-      </button>
+        <span className="text-[10px] font-medium text-[var(--color-text-light)] bg-[var(--color-bg-alt)] px-2 py-0.5 rounded-full shrink-0 ml-2">
+          {day.stops.length} {day.stops.length === 1 ? "stop" : "stops"}
+        </span>
+      </div>
 
-      {/* Expandable body */}
-      <div className={`grid-expand ${expanded ? "expanded" : ""} overflow-hidden`}>
-        <div className="grid-expand-inner">
-          <div className="px-3 pb-3 flex flex-col min-h-0">
-            <div className="overflow-y-auto overflow-x-hidden flex-1 min-h-0 pr-1">
-              {TIME_SLOTS.map((slot) => (
-                <TimeSlotLane
-                  key={slot}
-                  dayNumber={day.day_number}
-                  timeSlot={slot}
-                  stops={stopsForSlot(slot)}
-                  totalDays={totalDays}
-                  onEditStop={onEditStop}
-                  onDeleteStop={onDeleteStop}
-                  onMoveStopToDay={onMoveStopToDay}
-                />
-              ))}
-            </div>
-
-            <AddPlaceSearch
+      {/* Body */}
+      <div className="px-3 pb-3 flex flex-col flex-1 min-h-0">
+        <div className="overflow-y-auto overflow-x-hidden flex-1 min-h-0 pr-1">
+          {TIME_SLOTS.map((slot) => (
+            <TimeSlotLane
+              key={slot}
               dayNumber={day.day_number}
-              city={city}
-              onAddStop={onAddStop}
+              timeSlot={slot}
+              stops={stopsForSlot(slot)}
+              totalDays={totalDays}
+              onEditStop={onEditStop}
+              onDeleteStop={onDeleteStop}
+              onMoveStopToDay={onMoveStopToDay}
             />
-          </div>
+          ))}
         </div>
+
+        <AddPlaceSearch
+          dayNumber={day.day_number}
+          city={city}
+          onAddStop={onAddStop}
+        />
       </div>
     </div>
   );

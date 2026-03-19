@@ -37,13 +37,13 @@ export default function Home() {
   const showResults = itinerary !== null && !isLoading && !error;
   const selectedDay = itinerary?.days.find((d) => d.day_number === selectedDayNumber);
 
-  // Sync mapStops when selected day changes or itinerary first loads
+  // Sync mapStops when selected day changes or stops change
   useEffect(() => {
     if (selectedDay) {
       setMapStops(selectedDay.stops);
       setMapDirty(false);
     }
-  }, [selectedDayNumber, itinerary === null]);
+  }, [selectedDay]);
 
   const handleFormSubmit = async (data: TripFormData) => {
     setFormData(data);
@@ -356,7 +356,7 @@ export default function Home() {
                 transform:
                   activeView === "map"
                     ? "translateY(calc(-100vh + 4rem))"
-                    : "translateY(0)",
+                    : undefined,
               }}
             >
               {/* Planning View */}

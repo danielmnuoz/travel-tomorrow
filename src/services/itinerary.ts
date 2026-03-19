@@ -46,10 +46,29 @@ async function apiCall<T>(url: string, body: unknown): Promise<T> {
   return res.json();
 }
 
+const VALID_TIME_SLOTS = new Set(["morning", "afternoon", "evening"]);
+
+function normalizeTimeSlots(res: ItineraryResponse): ItineraryResponse {
+  return {
+    ...res,
+    days: res.days.map((day) => ({
+      ...day,
+      stops: day.stops.map((stop) => {
+        const slot = stop.time_slot.toLowerCase();
+        return {
+          ...stop,
+          time_slot: VALID_TIME_SLOTS.has(slot) ? slot : "afternoon",
+        };
+      }),
+    })),
+  };
+}
+
 export async function fetchItinerary(
   data: TripFormData
 ): Promise<ItineraryResponse> {
-  return apiCall<ItineraryResponse>("/api/itinerary", mapFormToRequest(data));
+  const res = await apiCall<ItineraryResponse>("/api/itinerary", mapFormToRequest(data));
+  return normalizeTimeSlots(res);
 }
 
 export async function refreshStop(
