@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { SelectInput, TextInput } from "@/components/ui/Input";
-import Slider from "@/components/ui/Slider";
 import Button from "@/components/ui/Button";
 import FormHint from "@/components/ui/FormHint";
 import { getFormHints } from "@/lib/formHints";
@@ -118,21 +117,6 @@ function RadioSelect({
     </div>
   );
 }
-
-const budgetLabels: Record<number, string> = {
-  1: "$",
-  2: "$$",
-  3: "$$$",
-  4: "$$$$",
-};
-
-const paceLabels: Record<number, string> = {
-  1: "Relaxed",
-  2: "Easygoing",
-  3: "Moderate",
-  4: "Active",
-  5: "Packed",
-};
 
 interface TripFormProps {
   onSubmit: (data: TripFormData) => void;
@@ -255,6 +239,19 @@ export default function TripForm({ onSubmit, onCancel }: TripFormProps) {
     });
   };
 
+  const BUDGET_OPTIONS = [
+    { value: "1", label: "$  —  Budget" },
+    { value: "2", label: "$$  —  Mid-range" },
+    { value: "3", label: "$$$  —  Upscale" },
+    { value: "4", label: "$$$$  —  Luxury" },
+  ];
+
+  const PACE_OPTIONS = [
+    { value: "1", label: "Relaxed" },
+    { value: "3", label: "Moderate" },
+    { value: "5", label: "Packed" },
+  ];
+
   return (
     <form onSubmit={handleSubmit} className="max-w-2xl mx-auto">
       {/* Back arrow (editing mode only) */}
@@ -281,7 +278,7 @@ export default function TripForm({ onSubmit, onCancel }: TripFormProps) {
       )}
 
       {/* Header */}
-      <div className="text-center mb-10">
+      <div className="text-center mb-8">
         <h1 className="font-bold text-4xl sm:text-5xl text-[var(--color-text)] mb-3">
           Plan your trip
         </h1>
@@ -290,13 +287,13 @@ export default function TripForm({ onSubmit, onCancel }: TripFormProps) {
         </p>
       </div>
 
-      <div className="space-y-6">
-        {/* Destination & Duration */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-[var(--color-border)]/50">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-light)] mb-5">
-            Destination
+      <div className="space-y-4">
+        {/* Destination + Style — combined card */}
+        <div className="bg-white rounded-2xl p-5 shadow-sm border border-[var(--color-border)]/50">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-light)] mb-4">
+            Destination &amp; Style
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <SelectInput
               label="City"
               options={CITIES}
@@ -304,15 +301,27 @@ export default function TripForm({ onSubmit, onCancel }: TripFormProps) {
               onChange={(e) => setCity(e.target.value)}
             />
             <TextInput
-              label="Trip Length (days)"
+              label="Days"
               type="number"
               min={1}
               max={7}
               value={days}
               onChange={(e) => setDays(e.target.value)}
             />
+            <SelectInput
+              label="Budget"
+              options={BUDGET_OPTIONS}
+              value={String(budget)}
+              onChange={(e) => setBudget(Number(e.target.value))}
+            />
+            <SelectInput
+              label="Pace"
+              options={PACE_OPTIONS}
+              value={String(pace)}
+              onChange={(e) => setPace(Number(e.target.value))}
+            />
           </div>
-          <div className="mt-4">
+          <div className="mt-3">
             <TextInput
               label="Address"
               type="text"
@@ -321,42 +330,17 @@ export default function TripForm({ onSubmit, onCancel }: TripFormProps) {
               onChange={(e) => setAddress(e.target.value)}
             />
           </div>
-        </div>
-
-        {/* Budget & Pace */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-[var(--color-border)]/50">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-light)] mb-5">
-            Style
-          </h2>
-          <div className="space-y-6">
-            <Slider
-              label="Budget"
-              min={1}
-              max={4}
-              value={budget}
-              onChange={setBudget}
-              renderValue={(v) => budgetLabels[v]}
-            />
-            <Slider
-              label="Pace"
-              min={1}
-              max={5}
-              value={pace}
-              onChange={setPace}
-              renderValue={(v) => paceLabels[v]}
-            />
-          </div>
           {hints.filter((h) => h.section === "style").map((h) => (
             <FormHint key={h.id} message={h.message} />
           ))}
         </div>
 
-        {/* Food & Interests */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-[var(--color-border)]/50">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-light)] mb-5">
+        {/* Food, Interests & Transport — combined card */}
+        <div className="bg-white rounded-2xl p-5 shadow-sm border border-[var(--color-border)]/50">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-light)] mb-4">
             Preferences
           </h2>
-          <div className="space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <ChipSelect
               label="Food Style"
               options={FOOD_STYLES}
@@ -373,22 +357,17 @@ export default function TripForm({ onSubmit, onCancel }: TripFormProps) {
           {hints.filter((h) => h.section === "preferences").map((h) => (
             <FormHint key={h.id} message={h.message} />
           ))}
-        </div>
-
-        {/* Transport */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-[var(--color-border)]/50">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-light)] mb-5">
-            Getting Around
-          </h2>
-          <RadioSelect
-            label="Transport Preference"
-            options={TRANSPORT}
-            selected={transport}
-            onSelect={setTransport}
-          />
-          {hints.filter((h) => h.section === "transport").map((h) => (
-            <FormHint key={h.id} message={h.message} />
-          ))}
+          <div className="mt-5 pt-4 border-t border-[var(--color-border)]/50">
+            <RadioSelect
+              label="Transport"
+              options={TRANSPORT}
+              selected={transport}
+              onSelect={setTransport}
+            />
+            {hints.filter((h) => h.section === "transport").map((h) => (
+              <FormHint key={h.id} message={h.message} />
+            ))}
+          </div>
         </div>
 
         {/* Advanced Options */}
@@ -396,7 +375,7 @@ export default function TripForm({ onSubmit, onCancel }: TripFormProps) {
           <button
             type="button"
             onClick={() => setAdvancedOpen(!advancedOpen)}
-            className="w-full flex items-center justify-between p-6 cursor-pointer"
+            className="w-full flex items-center justify-between p-5 cursor-pointer"
           >
             <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-light)]">
               Advanced Options
@@ -418,7 +397,7 @@ export default function TripForm({ onSubmit, onCancel }: TripFormProps) {
             </svg>
           </button>
           {advancedOpen && (
-            <div className="px-6 pb-6">
+            <div className="px-5 pb-5">
               {availableNeighborhoods.length > 0 && (
                 <>
                   <ChipSelect
