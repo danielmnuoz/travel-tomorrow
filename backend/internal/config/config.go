@@ -14,6 +14,7 @@ type Config struct {
 	SearchRadius     int
 	Debug            bool
 	RedisURL         string
+	PayAPI           bool
 }
 
 func Load() (*Config, error) {
@@ -45,6 +46,7 @@ func Load() (*Config, error) {
 	}
 
 	debug := os.Getenv("DEBUG") == "true" || os.Getenv("DEBUG") == "1"
+	payAPI := os.Getenv("PAY_API") == "true" || os.Getenv("PAY_API") == "1"
 
 	redisURL := os.Getenv("REDIS_URL")
 	if redisURL == "" {
@@ -59,5 +61,6 @@ func Load() (*Config, error) {
 		SearchRadius:     radius,
 		Debug:            debug,
 		RedisURL:         redisURL,
+		PayAPI:           payAPI,
 	}, nil
 }

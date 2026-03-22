@@ -1,16 +1,30 @@
 import Link from "next/link";
 
-export default function Navbar() {
+interface NavbarProps {
+  children?: React.ReactNode;
+  compact?: boolean;
+}
+
+export default function Navbar({ children, compact }: NavbarProps) {
   return (
     <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-[var(--color-border)]">
-      <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-6 h-14 flex items-center gap-4">
         <Link
           href="/"
-          className="font-bold text-2xl text-[var(--color-text)] hover:text-[var(--color-primary)] transition-colors duration-200"
+          className={`font-bold text-[var(--color-text)] hover:text-[var(--color-primary)] transition-colors duration-200 shrink-0 ${
+            compact ? "hidden sm:block text-base" : "text-2xl"
+          }`}
         >
           Travel Tomorrow
         </Link>
-        <div className="flex items-center gap-8" />
+        {children && (
+          <>
+            <div className="hidden sm:block w-px h-5 bg-[var(--color-border)] shrink-0" />
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              {children}
+            </div>
+          </>
+        )}
       </div>
     </nav>
   );

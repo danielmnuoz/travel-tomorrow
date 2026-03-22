@@ -1,17 +1,15 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { arrayMove } from "@dnd-kit/sortable";
 import Navbar from "@/components/Navbar";
 import TripForm from "@/components/TripForm";
 import TripSummary from "@/components/TripSummary";
-import DayCard from "@/components/DayCard";
-import MapContainer from "@/components/MapContainer";
-import DayDetailView from "@/components/DayDetailView";
-import RemapButton from "@/components/RemapButton";
+import ItineraryBoard from "@/components/ItineraryBoard";
+import MapSection from "@/components/MapSection";
 import UndoToast from "@/components/UndoToast";
 import { fetchItinerary, mapFormToRequest, refreshStop } from "@/services/itinerary";
-import type { ItineraryResponse, PlaceStop } from "@/types/itinerary";
+import type { DayPlan, ItineraryResponse, PlaceStop } from "@/types/itinerary";
 import type { TripFormData } from "@/components/TripForm";
 
 interface DeletedStopInfo {
@@ -27,7 +25,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedDayNumber, setSelectedDayNumber] = useState(1);
-  const [detailDayNumber, setDetailDayNumber] = useState<number | null>(null);
+  const [activeView, setActiveView] = useState<"planning" | "map">("planning");
 
   // Deferred map state
   const [mapStops, setMapStops] = useState<PlaceStop[]>([]);
@@ -38,17 +36,14 @@ export default function Home() {
 
   const showResults = itinerary !== null && !isLoading && !error;
   const selectedDay = itinerary?.days.find((d) => d.day_number === selectedDayNumber);
-  const detailDay = detailDayNumber
-    ? itinerary?.days.find((d) => d.day_number === detailDayNumber)
-    : null;
 
-  // Sync mapStops when selected day changes or itinerary first loads
+  // Sync mapStops when selected day changes or stops change
   useEffect(() => {
     if (selectedDay) {
       setMapStops(selectedDay.stops);
       setMapDirty(false);
     }
-  }, [selectedDayNumber, itinerary === null]);
+  }, [selectedDay]);
 
   const handleFormSubmit = async (data: TripFormData) => {
     setFormData(data);
@@ -166,18 +161,15 @@ export default function Home() {
         ...prev,
         days: prev.days.map((day) => {
           if (day.day_number !== dayNumber) return day;
-          // Get stops in this time slot and their original indices in the full array
           const slotIndices: number[] = [];
           day.stops.forEach((s, i) => {
             if (s.time_slot.toLowerCase() === timeSlot) slotIndices.push(i);
           });
-          // Reorder within the slot
           const reordered = arrayMove(
             slotIndices.map((i) => day.stops[i]),
             oldIndex,
             newIndex
           );
-          // Rebuild stops array
           const newStops = [...day.stops];
           slotIndices.forEach((origIdx, i) => {
             newStops[origIdx] = reordered[i];
@@ -231,6 +223,68 @@ export default function Home() {
     if (fromDay === selectedDayNumber || toDay === selectedDayNumber) setMapDirty(true);
   }, [selectedDayNumber]);
 
+  const handleMoveStopToDayAndSlot = useCallback((fromDay: number, fsqId: string, toDay: number, newTimeSlot: string) => {
+    setItinerary((prev) => {
+      if (!prev) return prev;
+      const sourceDay = prev.days.find((d) => d.day_number === fromDay);
+      const stop = sourceDay?.stops.find((s) => s.fsq_id === fsqId);
+      if (!stop) return prev;
+
+      const movedStop = { ...stop, time_slot: newTimeSlot };
+
+      return {
+        ...prev,
+        days: prev.days.map((day) => {
+          if (day.day_number === fromDay) {
+            return { ...day, stops: day.stops.filter((s) => s.fsq_id !== fsqId) };
+          }
+          if (day.day_number === toDay) {
+            return { ...day, stops: [...day.stops, movedStop] };
+          }
+          return day;
+        }),
+      };
+    });
+    if (fromDay === selectedDayNumber || toDay === selectedDayNumber) setMapDirty(true);
+  }, [selectedDayNumber]);
+
+  const handleAddStop = useCallback((dayNumber: number, stop: PlaceStop) => {
+    setItinerary((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        days: prev.days.map((day) => {
+          if (day.day_number !== dayNumber) return day;
+          return { ...day, stops: [...day.stops, stop] };
+        }),
+      };
+    });
+    if (dayNumber === selectedDayNumber) setMapDirty(true);
+  }, [selectedDayNumber]);
+
+  const handleAddDay = useCallback(() => {
+    setItinerary((prev) => {
+      if (!prev) return prev;
+      const nextDayNumber = prev.days.length > 0
+        ? Math.max(...prev.days.map((d) => d.day_number)) + 1
+        : 1;
+      const newDay: DayPlan = {
+        day_number: nextDayNumber,
+        neighborhood: "",
+        theme: "",
+        stops: [],
+      };
+      return { ...prev, days: [...prev.days, newDay] };
+    });
+    // Select the new day after state updates
+    setItinerary((prev) => {
+      if (!prev) return prev;
+      const lastDay = prev.days[prev.days.length - 1];
+      if (lastDay) setSelectedDayNumber(lastDay.day_number);
+      return prev;
+    });
+  }, []);
+
   const handleRemap = useCallback(() => {
     if (selectedDay) {
       setMapStops(selectedDay.stops);
@@ -240,31 +294,30 @@ export default function Home() {
 
   return (
     <>
-      <Navbar />
+      <Navbar compact={showResults && !isFormExpanded}>
+        {showResults && !isFormExpanded && formData && (
+          <TripSummary
+            data={formData}
+            onEdit={handleEdit}
+            onViewMap={() => setActiveView("map")}
+            totalStops={
+              itinerary!.days.reduce((acc, d) => acc + d.stops.length, 0)
+            }
+            totalDays={itinerary!.days.length}
+            itinerary={itinerary}
+          />
+        )}
+      </Navbar>
       <main className="min-h-screen">
-        {/* Form or Summary */}
-        {isFormExpanded ? (
+        {/* Form */}
+        {isFormExpanded && (
           <div className="py-12 px-6 animate-fade-in">
             <TripForm
               onSubmit={handleFormSubmit}
               onCancel={formData ? () => setIsFormExpanded(false) : undefined}
             />
           </div>
-        ) : formData && !isLoading && !error ? (
-          <div className="sticky top-16 z-40 animate-fade-in">
-            <TripSummary
-              data={formData}
-              onEdit={handleEdit}
-              days={itinerary?.days ?? []}
-              selectedDayNumber={selectedDayNumber}
-              onSelectDay={setSelectedDayNumber}
-              totalStops={
-                itinerary?.days.reduce((acc, d) => acc + d.stops.length, 0) ?? 0
-              }
-              itinerary={itinerary}
-            />
-          </div>
-        ) : null}
+        )}
 
         {/* Loading state */}
         {isLoading && !isFormExpanded && (
@@ -304,61 +357,62 @@ export default function Home() {
           </div>
         )}
 
-        {/* Itinerary results */}
-        {showResults && !isFormExpanded && selectedDay && (
-          <div className="animate-fade-in-up">
-            {/* Main content: split layout */}
-            <div className="flex flex-col lg:flex-row h-[calc(100vh-14rem)]">
-              {/* Map (mobile: top) */}
-              <div className="lg:hidden h-64 p-3 relative">
-                <MapContainer stops={mapStops} />
-                {mapDirty && <RemapButton onClick={handleRemap} />}
+        {/* Itinerary results — two-panel layout: Planning + Map */}
+        {showResults && !isFormExpanded && formData && (
+          <div
+            className="overflow-hidden animate-fade-in-up"
+            style={{ height: "calc(100vh - 3.5rem)" }}
+          >
+            <div
+              className="transition-transform duration-500 ease-in-out"
+              style={{
+                transform:
+                  activeView === "map"
+                    ? "translateY(calc(-100vh + 3.5rem))"
+                    : undefined,
+              }}
+            >
+              {/* Planning View */}
+              <div
+                className="flex flex-col"
+                style={{ height: "calc(100vh - 3.5rem)" }}
+              >
+                <ItineraryBoard
+                  days={itinerary.days}
+                  city={itinerary.city}
+                  selectedDayNumber={selectedDayNumber}
+                  onSelectDay={setSelectedDayNumber}
+                  onEditStop={handleEditStop}
+                  onDeleteStop={handleDeleteStop}
+                  onReorderStop={handleReorderStop}
+                  onMoveStopToSlot={handleMoveStopToSlot}
+                  onMoveStopToDay={handleMoveStopToDay}
+                  onMoveStopToDayAndSlot={handleMoveStopToDayAndSlot}
+                  onAddStop={handleAddStop}
+                  onAddDay={handleAddDay}
+                />
               </div>
 
-              {/* Left panel: day cards */}
-              <div className="flex-1 lg:w-[40%] lg:max-w-[520px] overflow-y-auto p-4 sm:p-6 space-y-4">
-                {itinerary.days.map((day) => (
-                  <DayCard
-                    key={day.day_number}
-                    day={day}
-                    isSelected={selectedDayNumber === day.day_number}
-                    onSelect={() => setSelectedDayNumber(day.day_number)}
-                    onViewDetails={() => setDetailDayNumber(day.day_number)}
-                    onEditStop={handleEditStop}
-                    onDeleteStop={handleDeleteStop}
-                    onMoveStopToDay={handleMoveStopToDay}
-                    totalDays={itinerary.days.length}
-                  />
-                ))}
-              </div>
-
-              {/* Right panel: map (desktop only) */}
-              <div className="hidden lg:block flex-1 p-4 pl-0">
-                <div className="h-full sticky top-0 relative">
-                  <MapContainer stops={mapStops} />
-                  {mapDirty && <RemapButton onClick={handleRemap} />}
-                </div>
+              {/* Map View */}
+              <div
+                className="flex flex-col"
+                style={{ height: "calc(100vh - 3.5rem)" }}
+              >
+                <MapSection
+                  days={itinerary.days}
+                  selectedDayNumber={selectedDayNumber}
+                  onSelectDay={setSelectedDayNumber}
+                  mapStops={mapStops}
+                  mapDirty={mapDirty}
+                  onRemap={handleRemap}
+                  city={itinerary.city}
+                  onBack={() => setActiveView("planning")}
+                />
               </div>
             </div>
           </div>
         )}
       </main>
-
-      {/* Day detail modal */}
-      {detailDay && formData && (
-        <DayDetailView
-          day={detailDay}
-          onClose={() => setDetailDayNumber(null)}
-          preferences={mapFormToRequest(formData)}
-          onStopRefreshed={handleStopRefreshed}
-          onEditStop={handleEditStop}
-          onDeleteStop={handleDeleteStop}
-          onReorderStop={handleReorderStop}
-          onMoveStopToSlot={handleMoveStopToSlot}
-          onMoveStopToDay={handleMoveStopToDay}
-          totalDays={itinerary?.days.length ?? 0}
-        />
-      )}
 
       {/* Undo toast */}
       {deletedStopInfo && (

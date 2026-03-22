@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { generateICS, downloadICS } from "@/utils/ics";
 import type { ItineraryResponse } from "@/types/itinerary";
 
@@ -26,7 +27,7 @@ export default function ExportModal({ itinerary, city, onClose }: ExportModalPro
     onClose();
   };
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center animate-fade-in">
       <div
         className="absolute inset-0 bg-black/30 backdrop-blur-sm"
@@ -109,6 +110,7 @@ export default function ExportModal({ itinerary, city, onClose }: ExportModalPro
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
