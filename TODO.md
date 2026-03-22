@@ -48,17 +48,4 @@
 - Add option to show all days simultaneously, color-coded by day number
 - Pass all days' stops to MapContainer, differentiate with distinct colors
 
-## Dual API Key Support
-- Config flag for which tier/provider to use per service:
-  - **Foursquare**: Embed API vs Places API — free web key for public, expensive key for personal use
-  - **Maps**: try OpenMapBox (or similar popular free option) first, upgrade to full Google Maps later
-- Infrastructure/config concern, not user-facing — implement when needed
-
-## Itinerary Results UI Revamp
-- **Drag & drop** — stops can be dragged between day cards and dropped into specific time slots (morning/afternoon/evening)
-- **Edit stop** — inline edit option on each stop (change name, time slot, or notes)
-- **Delete stop** — remove a stop from a day without regenerating
-- **Deferred map update** — map doesn't re-route on every change; instead a "Remap" button appears after edits, and clicking it recalculates routes for the updated itinerary
-- Goal: let users fine-tune results post-generation without re-running the LLM
-- Consider: react-beautiful-dnd or dnd-kit for drag interactions
 

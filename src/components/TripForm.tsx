@@ -323,7 +323,7 @@ export default function TripForm({ onSubmit, onCancel }: TripFormProps) {
           </div>
           <div className="mt-3">
             <TextInput
-              label="Address"
+              label="Stay Address"
               type="text"
               placeholder="e.g. 768 5th Ave, New York"
               value={address}
