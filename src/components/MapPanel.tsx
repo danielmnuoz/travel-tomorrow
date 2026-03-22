@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef } from "react";
 import { ChevronUp, ChevronDown, Map } from "lucide-react";
-import MapContainer from "@/components/MapContainer";
+import MapWrapper from "@/components/MapWrapper";
 import RemapButton from "@/components/RemapButton";
 import type { PlaceStop } from "@/types/itinerary";
 
@@ -81,7 +81,7 @@ export default function MapPanel({ stops, mapDirty, onRemap }: MapPanelProps) {
       {!collapsed && (
         <div className="pt-10 h-full relative">
           <div className="h-full p-2 pt-0">
-            <MapContainer stops={stops} />
+            <MapWrapper stops={stops} />
           </div>
           {mapDirty && <RemapButton onClick={onRemap} />}
         </div>

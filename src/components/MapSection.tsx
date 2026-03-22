@@ -13,7 +13,7 @@ import {
   Beer,
   type LucideIcon,
 } from "lucide-react";
-import MapContainer from "@/components/MapContainer";
+import MapWrapper from "@/components/MapWrapper";
 import RemapButton from "@/components/RemapButton";
 import type { DayPlan, PlaceIcon, PlaceStop } from "@/types/itinerary";
 
@@ -150,7 +150,7 @@ export default function MapSection({
         {/* Map */}
         <div className="flex-1 relative min-h-0">
           <div className="absolute inset-0 p-2">
-            <MapContainer stops={mapStops} />
+            <MapWrapper stops={mapStops} dayColor={DAY_COLORS[(selectedDayNumber - 1) % DAY_COLORS.length]} />
           </div>
           {mapDirty && <RemapButton onClick={onRemap} />}
         </div>

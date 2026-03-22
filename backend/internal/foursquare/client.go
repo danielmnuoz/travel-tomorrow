@@ -86,11 +86,13 @@ type Client struct {
 	apiKey     string
 	httpClient *http.Client
 	debug      bool
+	payAPI     bool
 }
 
 // NewClient creates a new Foursquare API client. If httpClient is nil,
-// http.DefaultClient is used.
-func NewClient(apiKey string, httpClient *http.Client, debug bool) *Client {
+// http.DefaultClient is used. When payAPI is true, premium fields (rating,
+// price, photos) are requested.
+func NewClient(apiKey string, httpClient *http.Client, debug bool, payAPI bool) *Client {
 	if httpClient == nil {
 		httpClient = http.DefaultClient
 	}
@@ -98,6 +100,7 @@ func NewClient(apiKey string, httpClient *http.Client, debug bool) *Client {
 		apiKey:     apiKey,
 		httpClient: httpClient,
 		debug:      debug,
+		payAPI:     payAPI,
 	}
 }
 
@@ -142,6 +145,12 @@ func (c *Client) MatchPlace(ctx context.Context, name string, lat, lng float64) 
 
 // doSearch executes a Foursquare Places Search request with the given params.
 func (c *Client) doSearch(ctx context.Context, params url.Values) ([]model.Candidate, error) {
+	if c.payAPI {
+		// TODO: request premium Foursquare fields (rating, price, photos, tips)
+		// params.Set("fields", "fsq_place_id,name,latitude,longitude,distance,categories,rating,price,photos,tips")
+		_ = c.payAPI // suppress unused hint until premium fields are wired up
+	}
+
 	reqURL := placesSearchURL + "?" + params.Encode()
 
 	if c.debug {

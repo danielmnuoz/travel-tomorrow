@@ -22,7 +22,7 @@ func main() {
 	}
 
 	// Initialize service clients
-	fsqClient := foursquare.NewClient(cfg.FoursquareAPIKey, nil, cfg.Debug)
+	fsqClient := foursquare.NewClient(cfg.FoursquareAPIKey, nil, cfg.Debug, cfg.PayAPI)
 	rdb := cache.NewRedisClient(cfg.RedisURL)
 	cachedFsq := cache.NewCachedSearcher(fsqClient, rdb, 7*24*time.Hour)
 	llmClient := llm.NewClient(cfg.OllamaURL, cfg.OllamaModel, nil)
