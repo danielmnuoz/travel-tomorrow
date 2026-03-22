@@ -294,7 +294,20 @@ export default function Home() {
 
   return (
     <>
-      <Navbar />
+      <Navbar compact={showResults && !isFormExpanded}>
+        {showResults && !isFormExpanded && formData && (
+          <TripSummary
+            data={formData}
+            onEdit={handleEdit}
+            onViewMap={() => setActiveView("map")}
+            totalStops={
+              itinerary!.days.reduce((acc, d) => acc + d.stops.length, 0)
+            }
+            totalDays={itinerary!.days.length}
+            itinerary={itinerary}
+          />
+        )}
+      </Navbar>
       <main className="min-h-screen">
         {/* Form */}
         {isFormExpanded && (
@@ -348,33 +361,22 @@ export default function Home() {
         {showResults && !isFormExpanded && formData && (
           <div
             className="overflow-hidden animate-fade-in-up"
-            style={{ height: "calc(100vh - 4rem)" }}
+            style={{ height: "calc(100vh - 3.5rem)" }}
           >
             <div
               className="transition-transform duration-500 ease-in-out"
               style={{
                 transform:
                   activeView === "map"
-                    ? "translateY(calc(-100vh + 4rem))"
+                    ? "translateY(calc(-100vh + 3.5rem))"
                     : undefined,
               }}
             >
               {/* Planning View */}
               <div
                 className="flex flex-col"
-                style={{ height: "calc(100vh - 4rem)" }}
+                style={{ height: "calc(100vh - 3.5rem)" }}
               >
-                <TripSummary
-                  data={formData}
-                  onEdit={handleEdit}
-                  onViewMap={() => setActiveView("map")}
-                  totalStops={
-                    itinerary.days.reduce((acc, d) => acc + d.stops.length, 0)
-                  }
-                  totalDays={itinerary.days.length}
-                  itinerary={itinerary}
-                />
-
                 <ItineraryBoard
                   days={itinerary.days}
                   city={itinerary.city}
@@ -394,7 +396,7 @@ export default function Home() {
               {/* Map View */}
               <div
                 className="flex flex-col"
-                style={{ height: "calc(100vh - 4rem)" }}
+                style={{ height: "calc(100vh - 3.5rem)" }}
               >
                 <MapSection
                   days={itinerary.days}
