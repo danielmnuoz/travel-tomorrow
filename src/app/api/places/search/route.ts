@@ -1,10 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { PlaceCategory } from "@/types/itinerary";
 
 interface NominatimResult {
   display_name: string;
   lat: string;
   lon: string;
   name?: string;
+  class?: string;
+  type?: string;
+}
+
+function inferCategory(cls: string, type: string): PlaceCategory {
+  if (cls === "amenity") {
+    if (["restaurant", "fast_food", "food_court", "biergarten"].includes(type))
+      return "food";
+    if (["cafe", "bakery", "ice_cream", "confectionery"].includes(type))
+      return "cafe";
+    if (["bar", "nightclub", "pub", "lounge"].includes(type)) return "nightlife";
+  }
+  if (cls === "shop") return "shopping";
+  if (
+    cls === "tourism" &&
+    ["museum", "gallery", "attraction", "artwork", "viewpoint"].includes(type)
+  )
+    return "landmark";
+  if (cls === "historic") return "landmark";
+  return "activity";
 }
 
 export async function GET(request: NextRequest) {
@@ -38,6 +59,7 @@ export async function GET(request: NextRequest) {
     display_name: item.display_name,
     latitude: parseFloat(item.lat),
     longitude: parseFloat(item.lon),
+    category: inferCategory(item.class ?? "", item.type ?? ""),
   }));
 
   return NextResponse.json(results);

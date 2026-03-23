@@ -16,6 +16,7 @@ import {
 import MapWrapper from "@/components/MapWrapper";
 import RemapButton from "@/components/RemapButton";
 import type { DayPlan, PlaceIcon, PlaceStop } from "@/types/itinerary";
+import { DAY_COLORS } from "@/constants/itinerary";
 
 const iconMap: Record<PlaceIcon, LucideIcon> = {
   utensils: Utensils,
@@ -29,16 +30,6 @@ const iconMap: Record<PlaceIcon, LucideIcon> = {
   beer: Beer,
   "map-pin": MapPin,
 };
-
-const DAY_COLORS = [
-  "#E07A5F",
-  "#3D85C6",
-  "#7B61A6",
-  "#4CAF50",
-  "#F4A261",
-  "#E76F51",
-  "#2A9D8F",
-];
 
 interface MapSectionProps {
   days: DayPlan[];

@@ -24,6 +24,7 @@ export function mapFormToRequest(data: TripFormData): ItineraryRequest {
       data.mustVisits && data.mustVisits.length > 0
         ? data.mustVisits
         : undefined,
+    ...(data.maxFoodStops != null && { max_food_stops: data.maxFoodStops }),
   };
 }
 

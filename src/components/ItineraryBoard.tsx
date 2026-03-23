@@ -20,18 +20,7 @@ import TimeSlotLane from "@/components/TimeSlotLane";
 import AddPlaceSearch from "@/components/AddPlaceSearch";
 import { Plus, Trash2 } from "lucide-react";
 import type { DayPlan, PlaceStop } from "@/types/itinerary";
-
-const DAY_COLORS = [
-  "#E07A5F",
-  "#3D85C6",
-  "#7B61A6",
-  "#4CAF50",
-  "#F4A261",
-  "#E76F51",
-  "#2A9D8F",
-];
-
-const TIME_SLOTS = ["morning", "afternoon", "evening"];
+import { DAY_COLORS, TIME_SLOTS } from "@/constants/itinerary";
 
 interface ItineraryBoardProps {
   days: DayPlan[];
@@ -102,7 +91,7 @@ export default function ItineraryBoard({
   const scrollToDay = useCallback((index: number) => {
     const container = scrollContainerRef.current;
     if (!container) return;
-    const columnWidth = 480;
+    const columnWidth = 400;
     const gap = 16;
     const padding = 16;
     const scrollTarget = padding + index * (columnWidth + gap);
@@ -365,7 +354,7 @@ export default function ItineraryBoard({
               {/* Add Day ghost column */}
               <button
                 onClick={onAddDay}
-                className="w-[480px] shrink-0 flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-[var(--color-border)] text-[var(--color-text-light)] hover:border-[var(--color-primary)]/40 hover:text-[var(--color-primary)] hover:bg-[var(--color-primary-wash)] transition-all duration-200 cursor-pointer snap-start"
+                className="w-[400px] shrink-0 flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-[var(--color-border)] text-[var(--color-text-light)] hover:border-[var(--color-primary)]/40 hover:text-[var(--color-primary)] hover:bg-[var(--color-primary-wash)] transition-all duration-200 cursor-pointer snap-start"
               >
                 <div className="w-10 h-10 rounded-xl bg-[var(--color-bg-alt)] flex items-center justify-center">
                   <Plus size={20} strokeWidth={1.5} />

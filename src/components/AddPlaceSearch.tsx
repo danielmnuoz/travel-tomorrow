@@ -2,14 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Plus, Search, X } from "lucide-react";
-import type { PlaceStop } from "@/types/itinerary";
-
-interface SearchResult {
-  name: string;
-  display_name: string;
-  latitude: number;
-  longitude: number;
-}
+import type { PlaceStop, PlaceSearchResult } from "@/types/itinerary";
 
 interface AddPlaceSearchProps {
   dayNumber: number;
@@ -24,7 +17,7 @@ export default function AddPlaceSearch({
 }: AddPlaceSearchProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<SearchResult[]>([]);
+  const [results, setResults] = useState<PlaceSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState("afternoon");
   const debounceRef = useRef<NodeJS.Timeout>(null);
@@ -59,13 +52,13 @@ export default function AddPlaceSearch({
     };
   }, [query, city]);
 
-  const handleSelect = (result: SearchResult) => {
+  const handleSelect = (result: PlaceSearchResult) => {
     const stop: PlaceStop = {
       fsq_id: `manual-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       name: result.name,
       latitude: result.latitude,
       longitude: result.longitude,
-      category: "custom",
+      category: result.category ?? "activity",
       time_slot: selectedSlot,
       icon: "map-pin",
       description: result.display_name,

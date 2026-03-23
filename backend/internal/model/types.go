@@ -34,6 +34,7 @@ type ItineraryRequest struct {
 	Address        string           `json:"address,omitempty"`
 	Neighborhoods  []string         `json:"neighborhoods,omitempty"`
 	MustVisits     []MustVisitPlace `json:"must_visits,omitempty"`
+	MaxFoodStops   *int             `json:"max_food_stops,omitempty"`
 }
 
 type ItineraryResponse struct {

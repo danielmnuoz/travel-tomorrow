@@ -1,9 +1,25 @@
+export type PlaceCategory =
+  | "food"
+  | "cafe"
+  | "activity"
+  | "landmark"
+  | "shopping"
+  | "nightlife";
+
+export interface PlaceSearchResult {
+  name: string;
+  display_name: string;
+  latitude: number;
+  longitude: number;
+  category?: PlaceCategory;
+}
+
 export interface MustVisitPlace {
   id: string;
   name: string;
   latitude: number;
   longitude: number;
-  category?: string;
+  category?: PlaceCategory;
 }
 
 export interface ItineraryRequest {
@@ -17,6 +33,7 @@ export interface ItineraryRequest {
   address?: string;
   neighborhoods?: string[];
   must_visits?: MustVisitPlace[];
+  max_food_stops?: number;
 }
 
 export interface Neighborhood {
@@ -43,7 +60,7 @@ export interface PlaceStop {
   name: string;
   latitude: number;
   longitude: number;
-  category: string;
+  category: PlaceCategory;
   time_slot: string;
   icon: PlaceIcon;
   description: string;

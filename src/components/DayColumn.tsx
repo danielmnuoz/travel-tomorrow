@@ -5,18 +5,7 @@ import { Trash2 } from "lucide-react";
 import TimeSlotLane from "@/components/TimeSlotLane";
 import AddPlaceSearch from "@/components/AddPlaceSearch";
 import type { DayPlan, PlaceStop } from "@/types/itinerary";
-
-const DAY_COLORS = [
-  "#E07A5F",
-  "#3D85C6",
-  "#7B61A6",
-  "#4CAF50",
-  "#F4A261",
-  "#E76F51",
-  "#2A9D8F",
-];
-
-const TIME_SLOTS = ["morning", "afternoon", "evening"];
+import { DAY_COLORS, TIME_SLOTS } from "@/constants/itinerary";
 
 interface DayColumnProps {
   day: DayPlan;
@@ -59,7 +48,7 @@ export default function DayColumn({
 
   return (
     <div
-      className={`group w-[480px] shrink-0 flex flex-col rounded-2xl border bg-white overflow-hidden transition-all duration-200 animate-slide-in-right snap-start ${
+      className={`group w-[400px] shrink-0 flex flex-col rounded-2xl border bg-white overflow-hidden transition-all duration-200 animate-slide-in-right snap-start ${
         isActive
           ? "border-[var(--color-primary)]/30 shadow-md"
           : "border-[var(--color-border)]/60 hover:border-[var(--color-border)]"

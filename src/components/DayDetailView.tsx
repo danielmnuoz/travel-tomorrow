@@ -60,7 +60,7 @@ const timeConfig: Record<string, { label: string; icon: string; color: string; b
   },
 };
 
-const TIME_SLOTS = ["morning", "afternoon", "evening"];
+import { TIME_SLOTS } from "@/constants/itinerary";
 
 function SortableStopCard({
   stop,

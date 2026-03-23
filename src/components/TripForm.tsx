@@ -5,7 +5,7 @@ import { SelectInput, TextInput } from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import FormHint from "@/components/ui/FormHint";
 import { getFormHints } from "@/lib/formHints";
-import type { Neighborhood, MustVisitPlace } from "@/types/itinerary";
+import type { Neighborhood, MustVisitPlace, PlaceSearchResult, PlaceCategory } from "@/types/itinerary";
 
 const CITIES = [
   { value: "nyc", label: "New York City" },
@@ -31,14 +31,17 @@ export interface TripFormData {
   transport: string;
   neighborhoods?: string[];
   mustVisits?: MustVisitPlace[];
+  maxFoodStops?: number | null;
 }
 
-interface PlaceSearchResult {
-  name: string;
-  display_name: string;
-  latitude: number;
-  longitude: number;
-}
+const CATEGORY_OPTIONS = [
+  { value: "food", label: "Meal", icon: "🍽️" },
+  { value: "cafe", label: "Cafe", icon: "☕" },
+  { value: "activity", label: "Activity", icon: "🎯" },
+  { value: "landmark", label: "Landmark", icon: "🏛️" },
+  { value: "shopping", label: "Shopping", icon: "🛍️" },
+  { value: "nightlife", label: "Nightlife", icon: "🌙" },
+] as const;
 
 function ChipSelect({
   label,
@@ -81,20 +84,27 @@ function ChipSelect({
 
 function RadioSelect({
   label,
+  subtitle,
   options,
   selected,
   onSelect,
+  allowDeselect,
 }: {
   label: string;
+  subtitle?: string;
   options: string[];
   selected: string;
-  onSelect: (option: string) => void;
+  onSelect: (option: string | null) => void;
+  allowDeselect?: boolean;
 }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-[var(--color-text)] mb-3">
+      <label className={`block text-sm font-medium text-[var(--color-text)] ${subtitle ? "mb-1" : "mb-3"}`}>
         {label}
       </label>
+      {subtitle && (
+        <p className="text-xs text-[var(--color-text-muted)] mb-3">{subtitle}</p>
+      )}
       <div className="flex gap-2">
         {options.map((option) => {
           const isSelected = selected === option;
@@ -102,7 +112,9 @@ function RadioSelect({
             <button
               key={option}
               type="button"
-              onClick={() => onSelect(option)}
+              onClick={() =>
+                onSelect(allowDeselect && isSelected ? null : option)
+              }
               className={`flex-1 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer ${
                 isSelected
                   ? "bg-[var(--color-primary)] text-white shadow-sm"
@@ -137,11 +149,14 @@ export default function TripForm({ onSubmit, onCancel }: TripFormProps) {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [mustVisits, setMustVisits] = useState<MustVisitPlace[]>([]);
   const mustVisitCounter = useRef(0);
+  const [openCategoryPickerId, setOpenCategoryPickerId] = useState<string | null>(null);
+  const [maxFoodStops, setMaxFoodStops] = useState<number | null>(null);
   const [placeQuery, setPlaceQuery] = useState("");
   const [placeResults, setPlaceResults] = useState<PlaceSearchResult[]>([]);
   const [placeSearching, setPlaceSearching] = useState(false);
   const [showPlaceDropdown, setShowPlaceDropdown] = useState(false);
   const placeSearchRef = useRef<HTMLDivElement>(null);
+  const categoryPickerRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
 
   useEffect(() => {
@@ -186,9 +201,21 @@ export default function TripForm({ onSubmit, onCancel }: TripFormProps) {
       if (placeSearchRef.current && !placeSearchRef.current.contains(e.target as Node)) {
         setShowPlaceDropdown(false);
       }
+      if (openCategoryPickerId) {
+        const target = e.target as Node;
+        if (categoryPickerRef.current && !categoryPickerRef.current.contains(target)) {
+          setOpenCategoryPickerId(null);
+        }
+      }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [openCategoryPickerId]);
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
   }, []);
 
   const addMustVisit = (result: PlaceSearchResult) => {
@@ -197,6 +224,7 @@ export default function TripForm({ onSubmit, onCancel }: TripFormProps) {
       name: result.name,
       latitude: result.latitude,
       longitude: result.longitude,
+      category: result.category ?? "activity",
     };
     setMustVisits((prev) => [...prev, place]);
     setPlaceQuery("");
@@ -206,6 +234,14 @@ export default function TripForm({ onSubmit, onCancel }: TripFormProps) {
 
   const removeMustVisit = (id: string) => {
     setMustVisits((prev) => prev.filter((p) => p.id !== id));
+    setOpenCategoryPickerId(null);
+  };
+
+  const updateMustVisitCategory = (id: string, category: PlaceCategory) => {
+    setMustVisits((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, category } : p))
+    );
+    setOpenCategoryPickerId(null);
   };
 
   const hints = getFormHints({
@@ -236,6 +272,7 @@ export default function TripForm({ onSubmit, onCancel }: TripFormProps) {
       transport,
       neighborhoods: neighborhoods.length > 0 ? neighborhoods : undefined,
       mustVisits: mustVisits.length > 0 ? mustVisits : undefined,
+      maxFoodStops: maxFoodStops ?? undefined,
     });
   };
 
@@ -362,7 +399,7 @@ export default function TripForm({ onSubmit, onCancel }: TripFormProps) {
               label="Transport"
               options={TRANSPORT}
               selected={transport}
-              onSelect={setTransport}
+              onSelect={(v) => v && setTransport(v)}
             />
             {hints.filter((h) => h.section === "transport").map((h) => (
               <FormHint key={h.id} message={h.message} />
@@ -473,27 +510,68 @@ export default function TripForm({ onSubmit, onCancel }: TripFormProps) {
                   </div>
                   {mustVisits.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-3">
-                      {mustVisits.map((place) => (
-                        <span
-                          key={place.id}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-[var(--color-primary-lighter)] text-[var(--color-primary)]"
-                        >
-                          {place.name}
-                          <button
-                            type="button"
-                            onClick={() => removeMustVisit(place.id)}
-                            className="w-4 h-4 rounded-full hover:bg-[var(--color-primary)]/10 flex items-center justify-center cursor-pointer"
-                          >
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M18 6 6 18" />
-                              <path d="m6 6 12 12" />
-                            </svg>
-                          </button>
-                        </span>
-                      ))}
+                      {mustVisits.map((place) => {
+                        const cat = CATEGORY_OPTIONS.find((c) => c.value === place.category) ?? CATEGORY_OPTIONS[2];
+                        const isPickerOpen = openCategoryPickerId === place.id;
+                        return (
+                          <div key={place.id} className="relative">
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-[var(--color-primary-lighter)] text-[var(--color-primary)]">
+                              {place.name}
+                              <button
+                                type="button"
+                                onClick={() => setOpenCategoryPickerId(isPickerOpen ? null : place.id)}
+                                className="inline-flex items-center gap-0.5 text-[10px] font-semibold bg-[var(--color-primary)]/10 hover:bg-[var(--color-primary)]/20 rounded-full px-1.5 py-0.5 transition-colors cursor-pointer"
+                                title="Change category"
+                              >
+                                {cat.icon} {cat.label}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => removeMustVisit(place.id)}
+                                className="w-4 h-4 rounded-full hover:bg-[var(--color-primary)]/10 flex items-center justify-center cursor-pointer"
+                              >
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M18 6 6 18" />
+                                  <path d="m6 6 12 12" />
+                                </svg>
+                              </button>
+                            </span>
+                            {isPickerOpen && (
+                              <div ref={categoryPickerRef} className="absolute top-full left-0 mt-1.5 z-30 bg-white border border-[var(--color-border)] rounded-xl shadow-lg p-2 grid grid-cols-3 gap-1 w-48">
+                                {CATEGORY_OPTIONS.map((opt) => (
+                                  <button
+                                    key={opt.value}
+                                    type="button"
+                                    onClick={() => updateMustVisitCategory(place.id, opt.value)}
+                                    className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-lg text-[10px] font-medium transition-colors cursor-pointer ${
+                                      place.category === opt.value
+                                        ? "bg-[var(--color-primary)] text-white"
+                                        : "hover:bg-[var(--color-bg-alt)] text-[var(--color-text-muted)]"
+                                    }`}
+                                  >
+                                    <span className="text-base">{opt.icon}</span>
+                                    {opt.label}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
+                <div className="mt-6">
+                  <RadioSelect
+                    label="Max food stops per day"
+                    subtitle="Meals, cafes, and snacks combined. Leave unset for no limit."
+                    options={["1", "2", "3", "4"]}
+                    selected={maxFoodStops?.toString() ?? ""}
+                    onSelect={(v) => setMaxFoodStops(v ? parseInt(v) : null)}
+                    allowDeselect
+                  />
+                </div>
+
                 {hints.filter((h) => h.section === "advanced").map((h) => (
                   <FormHint key={h.id} message={h.message} />
                 ))}

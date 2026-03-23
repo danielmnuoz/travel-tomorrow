@@ -24,11 +24,10 @@
 # Feature Ideas
 
 ## User Category Overrides & Meal Controls
-- Optional user-assigned category per pinned stop: Museum, Quick Sight (park/viewpoint), Snack/Dessert, Meal, Nightlife, Shopping
-- Reduces dependency on Foursquare category resolution (which may not always match)
+- Optional user-assigned category per pinned stop: Meal, Cafe, Activity, Landmark, Shopping, Nightlife
+- Auto-detected from Nominatim class/type on search, user can click to override via inline category picker
 - Helps the planner make better scheduling decisions (time-of-day, meal limits)
-- Optional min/max meals-per-day setting on the form (currently hardcoded as prompt hint of max 3)
-- User override takes priority over Foursquare-resolved category
+- Max food stops per day added to Advanced section (meals, cafes, snacks combined; optional, toggleable)
 
 ## Curated Lists
 - Maintain lists of notable places per city (Michelin picks, personal recommendations, etc.)
