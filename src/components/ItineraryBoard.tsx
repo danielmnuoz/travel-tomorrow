@@ -18,7 +18,7 @@ import DayColumn from "@/components/DayColumn";
 import DragOverlayCard from "@/components/DragOverlayCard";
 import TimeSlotLane from "@/components/TimeSlotLane";
 import AddPlaceSearch from "@/components/AddPlaceSearch";
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import type { DayPlan, PlaceStop } from "@/types/itinerary";
 
 const DAY_COLORS = [
@@ -64,6 +64,7 @@ interface ItineraryBoardProps {
   ) => void;
   onAddStop: (dayNumber: number, stop: PlaceStop) => void;
   onAddDay: () => void;
+  onDeleteDay: (dayNumber: number) => void;
 }
 
 // Prefer stop-level collisions over lane-level for precise ordering
@@ -89,6 +90,7 @@ export default function ItineraryBoard({
   onMoveStopToDayAndSlot,
   onAddStop,
   onAddDay,
+  onDeleteDay,
 }: ItineraryBoardProps) {
   const [activeStopData, setActiveStopData] = useState<{
     stop: PlaceStop;
@@ -243,13 +245,24 @@ export default function ItineraryBoard({
           <div className="flex-1 overflow-y-auto p-4">
             {selectedDay && (
               <>
-                <div className="mb-3">
-                  <h3 className="text-base font-semibold text-[var(--color-text)]">
-                    {selectedDay.neighborhood}
-                  </h3>
-                  <p className="text-xs text-[var(--color-text-muted)]">
-                    {selectedDay.theme}
-                  </p>
+                <div className="mb-3 flex items-start justify-between">
+                  <div>
+                    <h3 className="text-base font-semibold text-[var(--color-text)]">
+                      {selectedDay.neighborhood}
+                    </h3>
+                    <p className="text-xs text-[var(--color-text-muted)]">
+                      {selectedDay.theme}
+                    </p>
+                  </div>
+                  {days.length > 1 && (
+                    <button
+                      onClick={() => onDeleteDay(selectedDay.day_number)}
+                      className="w-7 h-7 rounded-lg flex items-center justify-center text-[var(--color-text-light)] hover:bg-red-50 hover:text-red-500 transition-colors cursor-pointer shrink-0"
+                      title="Delete day"
+                    >
+                      <Trash2 size={14} strokeWidth={1.5} />
+                    </button>
+                  )}
                 </div>
                 {TIME_SLOTS.map((slot) => (
                   <TimeSlotLane
@@ -344,6 +357,8 @@ export default function ItineraryBoard({
                   onDeleteStop={onDeleteStop}
                   onMoveStopToDay={onMoveStopToDay}
                   onAddStop={onAddStop}
+                  onDeleteDay={onDeleteDay}
+                  canDeleteDay={days.length > 1}
                 />
               ))}
 

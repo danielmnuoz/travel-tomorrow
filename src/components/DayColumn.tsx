@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { Trash2 } from "lucide-react";
 import TimeSlotLane from "@/components/TimeSlotLane";
 import AddPlaceSearch from "@/components/AddPlaceSearch";
 import type { DayPlan, PlaceStop } from "@/types/itinerary";
@@ -31,6 +33,8 @@ interface DayColumnProps {
   onDeleteStop: (dayNumber: number, fsqId: string) => void;
   onMoveStopToDay: (fromDay: number, fsqId: string, toDay: number) => void;
   onAddStop: (dayNumber: number, stop: PlaceStop) => void;
+  onDeleteDay: (dayNumber: number) => void;
+  canDeleteDay: boolean;
 }
 
 export default function DayColumn({
@@ -44,7 +48,10 @@ export default function DayColumn({
   onDeleteStop,
   onMoveStopToDay,
   onAddStop,
+  onDeleteDay,
+  canDeleteDay,
 }: DayColumnProps) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const accentColor = DAY_COLORS[index % DAY_COLORS.length];
 
   const stopsForSlot = (slot: string) =>
@@ -52,7 +59,7 @@ export default function DayColumn({
 
   return (
     <div
-      className={`w-[480px] shrink-0 flex flex-col rounded-2xl border bg-white overflow-hidden transition-all duration-200 animate-slide-in-right snap-start ${
+      className={`group w-[480px] shrink-0 flex flex-col rounded-2xl border bg-white overflow-hidden transition-all duration-200 animate-slide-in-right snap-start ${
         isActive
           ? "border-[var(--color-primary)]/30 shadow-md"
           : "border-[var(--color-border)]/60 hover:border-[var(--color-border)]"
@@ -82,9 +89,47 @@ export default function DayColumn({
             </p>
           </div>
         </div>
-        <span className="text-[10px] font-medium text-[var(--color-text-light)] bg-[var(--color-bg-alt)] px-2 py-0.5 rounded-full shrink-0 ml-2">
-          {day.stops.length} {day.stops.length === 1 ? "stop" : "stops"}
-        </span>
+        <div className="flex items-center gap-1.5 shrink-0 ml-2">
+          <span className="text-[10px] font-medium text-[var(--color-text-light)] bg-[var(--color-bg-alt)] px-2 py-0.5 rounded-full">
+            {day.stops.length} {day.stops.length === 1 ? "stop" : "stops"}
+          </span>
+          {canDeleteDay && (
+            confirmDelete ? (
+              <div className="flex items-center gap-1 animate-fade-in">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteDay(day.day_number);
+                    setConfirmDelete(false);
+                  }}
+                  className="text-[10px] font-medium text-white bg-red-500 hover:bg-red-600 px-2 py-0.5 rounded-full transition-colors cursor-pointer"
+                >
+                  Remove
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setConfirmDelete(false);
+                  }}
+                  className="text-[10px] font-medium text-[var(--color-text-muted)] bg-[var(--color-bg-alt)] hover:bg-[var(--color-border)] px-2 py-0.5 rounded-full transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setConfirmDelete(true);
+                }}
+                className="w-6 h-6 rounded-lg flex items-center justify-center text-[var(--color-text-light)] opacity-0 group-hover:opacity-100 hover:bg-red-50 hover:text-red-500 transition-all duration-200 cursor-pointer"
+                title="Delete day"
+              >
+                <Trash2 size={13} strokeWidth={1.5} />
+              </button>
+            )
+          )}
+        </div>
       </div>
 
       {/* Body */}

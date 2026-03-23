@@ -262,6 +262,29 @@ export default function Home() {
     if (dayNumber === selectedDayNumber) setMapDirty(true);
   }, [selectedDayNumber]);
 
+  const handleDeleteDay = useCallback((dayNumber: number) => {
+    setItinerary((prev) => {
+      if (!prev || prev.days.length <= 1) return prev;
+      const filtered = prev.days
+        .filter((d) => d.day_number !== dayNumber)
+        .map((d, i) => ({ ...d, day_number: i + 1 }));
+      return { ...prev, days: filtered };
+    });
+    // After renumbering, adjust selection:
+    // - deleting before selected: shift down by 1
+    // - deleting the selected: pick previous or first
+    // - deleting after selected: no change
+    setSelectedDayNumber((prev) => {
+      if (prev === dayNumber) {
+        return Math.max(1, dayNumber - 1);
+      }
+      if (dayNumber < prev) {
+        return prev - 1;
+      }
+      return prev;
+    });
+  }, []);
+
   const handleAddDay = useCallback(() => {
     setItinerary((prev) => {
       if (!prev) return prev;
@@ -390,6 +413,7 @@ export default function Home() {
                   onMoveStopToDayAndSlot={handleMoveStopToDayAndSlot}
                   onAddStop={handleAddStop}
                   onAddDay={handleAddDay}
+                  onDeleteDay={handleDeleteDay}
                 />
               </div>
 
