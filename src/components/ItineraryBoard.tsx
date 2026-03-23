@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -94,6 +94,18 @@ export default function ItineraryBoard({
     stop: PlaceStop;
     dayNumber: number;
   } | null>(null);
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const scrollToDay = useCallback((index: number) => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const columnWidth = 480;
+    const gap = 16;
+    const padding = 16;
+    const scrollTarget = padding + index * (columnWidth + gap);
+    container.scrollTo({ left: scrollTarget, behavior: "smooth" });
+  }, []);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -263,38 +275,89 @@ export default function ItineraryBoard({
           </div>
         </div>
 
-        {/* Desktop: horizontal kanban board */}
-        <div
-          className="hidden lg:flex flex-1 min-h-0 overflow-x-auto kanban-scroll scroll-smooth"
-          style={{ scrollSnapType: "x proximity" }}
-        >
-          <div className="flex gap-4 p-4 h-full min-w-min">
+        {/* Desktop: day tabs + horizontal kanban board */}
+        <div className="hidden lg:flex flex-col flex-1 min-h-0">
+          {/* Day tab pills */}
+          <div className="flex items-center gap-2 px-4 pt-3 pb-1 shrink-0">
             {days.map((day, i) => (
-              <DayColumn
+              <button
                 key={day.day_number}
-                day={day}
-                index={i}
-                isActive={selectedDayNumber === day.day_number}
-                onSetActive={() => onSelectDay(day.day_number)}
-                totalDays={days.length}
-                city={city}
-                onEditStop={onEditStop}
-                onDeleteStop={onDeleteStop}
-                onMoveStopToDay={onMoveStopToDay}
-                onAddStop={onAddStop}
-              />
+                onClick={() => {
+                  onSelectDay(day.day_number);
+                  scrollToDay(i);
+                }}
+                className="group flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 cursor-pointer"
+                style={
+                  selectedDayNumber === day.day_number
+                    ? {
+                        backgroundColor: DAY_COLORS[i % DAY_COLORS.length],
+                        color: "#fff",
+                      }
+                    : {
+                        backgroundColor: "var(--color-bg-alt)",
+                        color: "var(--color-text-muted)",
+                      }
+                }
+              >
+                <span
+                  className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold"
+                  style={
+                    selectedDayNumber === day.day_number
+                      ? { backgroundColor: "rgba(255,255,255,0.25)", color: "#fff" }
+                      : { backgroundColor: DAY_COLORS[i % DAY_COLORS.length] + "20", color: DAY_COLORS[i % DAY_COLORS.length] }
+                  }
+                >
+                  {day.day_number}
+                </span>
+                <span className="max-w-[120px] truncate">{day.neighborhood}</span>
+                <span className="text-[10px] opacity-70">{day.stops.length} stops</span>
+              </button>
             ))}
-
-            {/* Add Day ghost column */}
             <button
               onClick={onAddDay}
-              className="w-[480px] shrink-0 flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-[var(--color-border)] text-[var(--color-text-light)] hover:border-[var(--color-primary)]/40 hover:text-[var(--color-primary)] hover:bg-[var(--color-primary-wash)] transition-all duration-200 cursor-pointer snap-start"
+              className="w-7 h-7 rounded-full border-2 border-dashed border-[var(--color-border)] flex items-center justify-center shrink-0 text-[var(--color-text-light)] hover:border-[var(--color-primary)]/40 hover:text-[var(--color-primary)] hover:bg-[var(--color-primary-wash)] transition-all duration-200 cursor-pointer"
+              title="Add Day"
             >
-              <div className="w-10 h-10 rounded-xl bg-[var(--color-bg-alt)] flex items-center justify-center">
-                <Plus size={20} strokeWidth={1.5} />
-              </div>
-              <span className="text-sm font-medium">Add Day</span>
+              <Plus size={13} strokeWidth={2} />
             </button>
+          </div>
+
+          {/* Kanban board */}
+          <div
+            ref={scrollContainerRef}
+            className="flex flex-1 min-h-0 overflow-x-auto kanban-scroll scroll-smooth"
+            style={{ scrollSnapType: "x proximity" }}
+          >
+            <div className="flex gap-4 p-4 h-full min-w-min">
+              {days.map((day, i) => (
+                <DayColumn
+                  key={day.day_number}
+                  day={day}
+                  index={i}
+                  isActive={selectedDayNumber === day.day_number}
+                  onSetActive={() => {
+                    onSelectDay(day.day_number);
+                  }}
+                  totalDays={days.length}
+                  city={city}
+                  onEditStop={onEditStop}
+                  onDeleteStop={onDeleteStop}
+                  onMoveStopToDay={onMoveStopToDay}
+                  onAddStop={onAddStop}
+                />
+              ))}
+
+              {/* Add Day ghost column */}
+              <button
+                onClick={onAddDay}
+                className="w-[480px] shrink-0 flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-[var(--color-border)] text-[var(--color-text-light)] hover:border-[var(--color-primary)]/40 hover:text-[var(--color-primary)] hover:bg-[var(--color-primary-wash)] transition-all duration-200 cursor-pointer snap-start"
+              >
+                <div className="w-10 h-10 rounded-xl bg-[var(--color-bg-alt)] flex items-center justify-center">
+                  <Plus size={20} strokeWidth={1.5} />
+                </div>
+                <span className="text-sm font-medium">Add Day</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
