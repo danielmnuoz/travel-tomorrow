@@ -60,10 +60,10 @@ export default function DayCard({
   return (
     <div
       onClick={onSelect}
-      className={`rounded-2xl p-5 transition-all duration-200 cursor-pointer border ${
+      className={`rounded-2xl p-5 transition-all duration-200 cursor-pointer border-2 ${
         isSelected
-          ? "bg-white border-[var(--color-primary)]/30 shadow-md shadow-[var(--color-primary)]/5"
-          : "bg-white border-[var(--color-border)]/50 hover:border-[var(--color-primary)]/20 hover:shadow-sm"
+          ? "bg-white border-[var(--color-primary)]/50 shadow-lg shadow-[var(--color-primary)]/8"
+          : "bg-white border-[var(--color-border)]/40 hover:border-[var(--color-primary)]/20 hover:shadow-sm"
       }`}
     >
       {/* Header */}

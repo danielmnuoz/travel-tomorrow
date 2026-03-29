@@ -48,10 +48,10 @@ export default function DayColumn({
 
   return (
     <div
-      className={`group w-[400px] shrink-0 flex flex-col rounded-2xl border bg-white overflow-hidden transition-all duration-200 animate-slide-in-right snap-start ${
+      className={`group w-[400px] shrink-0 flex flex-col rounded-2xl border-2 bg-white overflow-hidden transition-all duration-200 animate-slide-in-right snap-start ${
         isActive
-          ? "border-[var(--color-primary)]/30 shadow-md"
-          : "border-[var(--color-border)]/60 hover:border-[var(--color-border)]"
+          ? "border-[var(--color-primary)]/50 shadow-lg shadow-[var(--color-primary)]/8"
+          : "border-[var(--color-border)]/40 hover:border-[var(--color-border)]/70"
       }`}
       style={{
         borderTopWidth: 3,
