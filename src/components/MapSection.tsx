@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import {
   MapPin,
   Utensils,
@@ -11,11 +12,13 @@ import {
   Palette,
   Wine,
   Beer,
+  Layers,
   type LucideIcon,
 } from "lucide-react";
 import MapWrapper from "@/components/MapWrapper";
 import RemapButton from "@/components/RemapButton";
 import type { DayPlan, PlaceIcon, PlaceStop } from "@/types/itinerary";
+import type { DayOverlay } from "./LeafletMap";
 import { DAY_COLORS } from "@/constants/itinerary";
 
 const iconMap: Record<PlaceIcon, LucideIcon> = {
@@ -33,8 +36,8 @@ const iconMap: Record<PlaceIcon, LucideIcon> = {
 
 interface MapSectionProps {
   days: DayPlan[];
-  selectedDayNumber: number;
-  onSelectDay: (dayNumber: number) => void;
+  selectedDayNumber: number | null;
+  onSelectDay: (dayNumber: number | null) => void;
   mapStops: PlaceStop[];
   mapDirty: boolean;
   onRemap: () => void;
@@ -52,6 +55,19 @@ export default function MapSection({
   city,
   onBack,
 }: MapSectionProps) {
+  const isOverview = selectedDayNumber === null;
+
+  const allDaysOverlay = useMemo<DayOverlay[]>(() => {
+    if (!isOverview) return [];
+    return days.map((day, i) => ({
+      dayNumber: day.day_number,
+      color: DAY_COLORS[i % DAY_COLORS.length],
+      stops: day.stops,
+    }));
+  }, [days, isOverview]);
+
+  const totalStops = days.reduce((sum, d) => sum + d.stops.length, 0);
+
   return (
     <div className="flex flex-col flex-1 bg-white min-h-0">
       {/* Header bar */}
@@ -75,7 +91,7 @@ export default function MapSection({
           Back to Planning
         </button>
         <p className="text-sm text-[var(--color-text-muted)]">
-          {city} &middot; Day {selectedDayNumber} of {days.length}
+          {city} &middot; {isOverview ? `${days.length} days, ${totalStops} stops` : `Day ${selectedDayNumber} of ${days.length}`}
         </p>
       </div>
 
@@ -83,6 +99,31 @@ export default function MapSection({
       <div className="flex flex-1 min-h-0">
         {/* Day list sidebar */}
         <div className="w-[220px] shrink-0 border-r border-[var(--color-border)]/50 overflow-y-auto py-2 hidden sm:block">
+          {/* All Days overview button */}
+          <button
+            onClick={() => onSelectDay(null)}
+            className={`w-full text-left px-3 py-2.5 flex items-center gap-3 transition-colors duration-150 cursor-pointer ${
+              isOverview
+                ? "bg-[var(--color-primary-wash)]"
+                : "hover:bg-[var(--color-bg-alt)]"
+            }`}
+            style={isOverview ? { borderLeft: "3px solid var(--color-primary)" } : { borderLeft: "3px solid transparent" }}
+          >
+            <span className="w-6 h-6 rounded-md flex items-center justify-center bg-[var(--color-primary)] shrink-0">
+              <Layers size={13} className="text-white" strokeWidth={2.5} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className={`text-xs font-medium truncate ${isOverview ? "text-[var(--color-text)]" : "text-[var(--color-text-muted)]"}`}>
+                All Days
+              </p>
+              <p className="text-[10px] text-[var(--color-text-light)]">
+                Overview
+              </p>
+            </div>
+          </button>
+
+          <div className="h-px bg-[var(--color-border)]/50 mx-3 my-1" />
+
           {days.map((day, i) => {
             const isActive = day.day_number === selectedDayNumber;
             const color = DAY_COLORS[i % DAY_COLORS.length];
@@ -141,9 +182,13 @@ export default function MapSection({
         {/* Map */}
         <div className="flex-1 relative min-h-0">
           <div className="absolute inset-0 p-2">
-            <MapWrapper stops={mapStops} dayColor={DAY_COLORS[(selectedDayNumber - 1) % DAY_COLORS.length]} />
+            {isOverview ? (
+              <MapWrapper stops={[]} allDays={allDaysOverlay} />
+            ) : (
+              <MapWrapper stops={mapStops} dayColor={DAY_COLORS[(selectedDayNumber - 1) % DAY_COLORS.length]} />
+            )}
           </div>
-          {mapDirty && <RemapButton onClick={onRemap} />}
+          {!isOverview && mapDirty && <RemapButton onClick={onRemap} />}
         </div>
       </div>
     </div>

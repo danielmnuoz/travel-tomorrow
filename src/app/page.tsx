@@ -26,6 +26,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedDayNumber, setSelectedDayNumber] = useState(1);
+  const [mapSelectedDay, setMapSelectedDay] = useState<number | null>(null);
   const [activeView, setActiveView] = useState<"planning" | "map">("planning");
 
   // Streaming state
@@ -41,15 +42,14 @@ export default function Home() {
   const [deletedStopInfo, setDeletedStopInfo] = useState<DeletedStopInfo | null>(null);
 
   const showResults = itinerary !== null && !isLoading && !error;
-  const selectedDay = itinerary?.days.find((d) => d.day_number === selectedDayNumber);
-
-  // Sync mapStops when selected day changes or stops change
+  // Sync mapStops when selected map day changes
+  const mapDay = itinerary?.days.find((d) => d.day_number === mapSelectedDay);
   useEffect(() => {
-    if (selectedDay) {
-      setMapStops(selectedDay.stops);
+    if (mapDay) {
+      setMapStops(mapDay.stops);
       setMapDirty(false);
     }
-  }, [selectedDay]);
+  }, [mapDay]);
 
   const handleFormSubmit = async (data: TripFormData) => {
     setFormData(data);
@@ -104,7 +104,7 @@ export default function Home() {
         }),
       };
     });
-    if (dayNumber === selectedDayNumber) setMapDirty(true);
+    if (dayNumber === mapSelectedDay) setMapDirty(true);
   };
 
   const handleEditStop = useCallback((dayNumber: number, fsqId: string, updates: Partial<Pick<PlaceStop, "name" | "time_slot" | "description">>) => {
@@ -123,8 +123,8 @@ export default function Home() {
         }),
       };
     });
-    if (dayNumber === selectedDayNumber) setMapDirty(true);
-  }, [selectedDayNumber]);
+    if (dayNumber === mapSelectedDay) setMapDirty(true);
+  }, [mapSelectedDay]);
 
   const handleDeleteStop = useCallback((dayNumber: number, fsqId: string) => {
     setItinerary((prev) => {
@@ -148,8 +148,8 @@ export default function Home() {
         }),
       };
     });
-    if (dayNumber === selectedDayNumber) setMapDirty(true);
-  }, [selectedDayNumber]);
+    if (dayNumber === mapSelectedDay) setMapDirty(true);
+  }, [mapSelectedDay]);
 
   const handleUndoDelete = useCallback(() => {
     if (!deletedStopInfo) return;
@@ -166,9 +166,9 @@ export default function Home() {
         }),
       };
     });
-    if (dayNumber === selectedDayNumber) setMapDirty(true);
+    if (dayNumber === mapSelectedDay) setMapDirty(true);
     setDeletedStopInfo(null);
-  }, [deletedStopInfo, selectedDayNumber]);
+  }, [deletedStopInfo, mapSelectedDay]);
 
   const handleReorderStop = useCallback((dayNumber: number, timeSlot: string, oldIndex: number, newIndex: number) => {
     setItinerary((prev) => {
@@ -194,8 +194,8 @@ export default function Home() {
         }),
       };
     });
-    if (dayNumber === selectedDayNumber) setMapDirty(true);
-  }, [selectedDayNumber]);
+    if (dayNumber === mapSelectedDay) setMapDirty(true);
+  }, [mapSelectedDay]);
 
   const handleMoveStopToSlot = useCallback((dayNumber: number, fsqId: string, newTimeSlot: string) => {
     setItinerary((prev) => {
@@ -213,8 +213,8 @@ export default function Home() {
         }),
       };
     });
-    if (dayNumber === selectedDayNumber) setMapDirty(true);
-  }, [selectedDayNumber]);
+    if (dayNumber === mapSelectedDay) setMapDirty(true);
+  }, [mapSelectedDay]);
 
   const handleMoveStopToDay = useCallback((fromDay: number, fsqId: string, toDay: number) => {
     setItinerary((prev) => {
@@ -236,8 +236,8 @@ export default function Home() {
         }),
       };
     });
-    if (fromDay === selectedDayNumber || toDay === selectedDayNumber) setMapDirty(true);
-  }, [selectedDayNumber]);
+    if (fromDay === mapSelectedDay || toDay === mapSelectedDay) setMapDirty(true);
+  }, [mapSelectedDay]);
 
   const handleMoveStopToDayAndSlot = useCallback((fromDay: number, fsqId: string, toDay: number, newTimeSlot: string) => {
     setItinerary((prev) => {
@@ -261,8 +261,8 @@ export default function Home() {
         }),
       };
     });
-    if (fromDay === selectedDayNumber || toDay === selectedDayNumber) setMapDirty(true);
-  }, [selectedDayNumber]);
+    if (fromDay === mapSelectedDay || toDay === mapSelectedDay) setMapDirty(true);
+  }, [mapSelectedDay]);
 
   const handleAddStop = useCallback((dayNumber: number, stop: PlaceStop) => {
     setItinerary((prev) => {
@@ -275,8 +275,8 @@ export default function Home() {
         }),
       };
     });
-    if (dayNumber === selectedDayNumber) setMapDirty(true);
-  }, [selectedDayNumber]);
+    if (dayNumber === mapSelectedDay) setMapDirty(true);
+  }, [mapSelectedDay]);
 
   const handleDeleteDay = useCallback((dayNumber: number) => {
     setItinerary((prev) => {
@@ -325,11 +325,11 @@ export default function Home() {
   }, []);
 
   const handleRemap = useCallback(() => {
-    if (selectedDay) {
-      setMapStops(selectedDay.stops);
+    if (mapDay) {
+      setMapStops(mapDay.stops);
       setMapDirty(false);
     }
-  }, [selectedDay]);
+  }, [mapDay]);
 
   return (
     <>
@@ -338,7 +338,7 @@ export default function Home() {
           <TripSummary
             data={formData}
             onEdit={handleEdit}
-            onViewMap={() => setActiveView("map")}
+            onViewMap={() => { setMapSelectedDay(null); setActiveView("map"); }}
             totalStops={
               itinerary!.days.reduce((acc, d) => acc + d.stops.length, 0)
             }
@@ -436,8 +436,8 @@ export default function Home() {
               >
                 <MapSection
                   days={itinerary.days}
-                  selectedDayNumber={selectedDayNumber}
-                  onSelectDay={setSelectedDayNumber}
+                  selectedDayNumber={mapSelectedDay}
+                  onSelectDay={setMapSelectedDay}
                   mapStops={mapStops}
                   mapDirty={mapDirty}
                   onRemap={handleRemap}
