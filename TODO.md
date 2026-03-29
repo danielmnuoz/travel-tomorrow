@@ -47,4 +47,6 @@
 - Add option to show all days simultaneously, color-coded by day number
 - Pass all days' stops to MapContainer, differentiate with distinct colors
 
-
+## Cuisine Specification
+- In the advanced options, give a selection for specific type of cuisine the user likes or DOES NOT like. not sure which one would be more valuable.
+- Lean towards influencing some, not all, meal selections for that cuisine. 
