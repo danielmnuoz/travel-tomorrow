@@ -29,6 +29,7 @@ Neighborhoods always take priority — when selected, the hotel location is igno
   - **Proximity clustering** (0.10) — post-scoring pass rewards candidates near other high-scoring candidates, forming natural walkable clusters.
   - Walk mode and packed pace shift weights toward distance and proximity for tighter geographic grouping.
 - **LLM-powered ranking** — scored and shortlisted Foursquare candidates are passed to an LLM, which picks final stops and writes descriptions and themes.
+- **Live token streaming** — itinerary generation streams tokens in real-time via SSE instead of showing a blank spinner. Supports thinking models (qwen3, deepseek-r1, etc.) — reasoning output streams as a visible "Thinking" section before the JSON itinerary builds. Uses Ollama's native `think: true` parameter. Works with both local and Ollama cloud models.
 - **Redis caching** — Foursquare API responses are cached (7-day TTL) to avoid redundant calls during iteration.
 - **Responsive layout** — mobile stacks map above day cards; desktop uses a split view with a sticky map.
 - **Form hints** — subtle inline nudges appear when form settings conflict (e.g. low budget + elegant dining) or when no food styles/interests are selected, helping users catch mismatches before generating.
