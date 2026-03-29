@@ -8,7 +8,8 @@ import TripSummary from "@/components/TripSummary";
 import ItineraryBoard from "@/components/ItineraryBoard";
 import MapSection from "@/components/MapSection";
 import UndoToast from "@/components/UndoToast";
-import { fetchItinerary, mapFormToRequest, refreshStop } from "@/services/itinerary";
+import StreamingView from "@/components/StreamingView";
+import { fetchItineraryStream, mapFormToRequest, refreshStop } from "@/services/itinerary";
 import type { DayPlan, ItineraryResponse, PlaceStop } from "@/types/itinerary";
 import type { TripFormData } from "@/components/TripForm";
 
@@ -26,6 +27,11 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [selectedDayNumber, setSelectedDayNumber] = useState(1);
   const [activeView, setActiveView] = useState<"planning" | "map">("planning");
+
+  // Streaming state
+  const [streamStatus, setStreamStatus] = useState("");
+  const [streamThinking, setStreamThinking] = useState("");
+  const [streamTokens, setStreamTokens] = useState("");
 
   // Deferred map state
   const [mapStops, setMapStops] = useState<PlaceStop[]>([]);
@@ -50,16 +56,26 @@ export default function Home() {
     setIsFormExpanded(false);
     setError(null);
     setIsLoading(true);
+    setStreamStatus("");
+    setStreamThinking("");
+    setStreamTokens("");
     window.scrollTo({ top: 0 });
 
     try {
-      const result = await fetchItinerary(data);
+      const result = await fetchItineraryStream(data, {
+        onStatus: (msg) => setStreamStatus(msg),
+        onThinking: (token) => setStreamThinking((prev) => prev + token),
+        onToken: (token) => setStreamTokens((prev) => prev + token),
+      });
       setItinerary(result);
       setSelectedDayNumber(result.days[0]?.day_number ?? 1);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setIsLoading(false);
+      setStreamStatus("");
+      setStreamThinking("");
+      setStreamTokens("");
     }
   };
 
@@ -342,17 +358,13 @@ export default function Home() {
           </div>
         )}
 
-        {/* Loading state */}
+        {/* Loading / streaming state */}
         {isLoading && !isFormExpanded && (
-          <div className="flex flex-col items-center justify-center py-32 animate-fade-in">
-            <div className="w-10 h-10 border-3 border-[var(--color-primary)]/20 border-t-[var(--color-primary)] rounded-full animate-spin mb-6" />
-            <h2 className="text-xl font-semibold text-[var(--color-text)] mb-2">
-              Building your itinerary...
-            </h2>
-            <p className="text-sm text-[var(--color-text-muted)] max-w-sm text-center">
-              This can take 10-30 seconds while we plan the perfect trip for you.
-            </p>
-          </div>
+          <StreamingView
+            status={streamStatus || "Starting up..."}
+            thinking={streamThinking}
+            tokens={streamTokens}
+          />
         )}
 
         {/* Error state */}

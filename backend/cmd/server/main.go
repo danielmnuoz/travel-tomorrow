@@ -40,6 +40,7 @@ func main() {
 
 	mux.HandleFunc("GET /api/neighborhoods", h.HandleNeighborhoods)
 	mux.HandleFunc("POST /api/itinerary", h.HandleItinerary)
+	mux.HandleFunc("POST /api/itinerary/stream", h.HandleItineraryStream)
 	mux.HandleFunc("POST /api/itinerary/refresh-stop", h.HandleRefreshStop)
 
 	log.Printf("server listening on :%s", cfg.Port)

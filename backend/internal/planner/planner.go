@@ -20,6 +20,12 @@ import (
 
 const shortlistSize = 8
 
+// StreamEvent represents a Server-Sent Event sent during streaming itinerary generation.
+type StreamEvent struct {
+	Type    string      `json:"type"`    // "status", "token", "result", "error"
+	Payload interface{} `json:"payload"`
+}
+
 // candidateForLLM is the trimmed candidate struct sent to the LLM.
 type candidateForLLM struct {
 	FsqID        string  `json:"fsq_id"`
@@ -174,6 +180,146 @@ func (p *Planner) Plan(ctx context.Context, req model.ItineraryRequest) (*model.
 	}
 
 	// 8. Merge LLM output with full candidate data
+	resp := p.buildResponse(city, llmResp, shortlisted, req.MustVisits)
+	return resp, nil
+}
+
+// PlanStream is like Plan but sends streaming events via the onEvent callback.
+// Status events are sent for each pipeline stage, token events for each LLM token,
+// and a result event with the final itinerary.
+func (p *Planner) PlanStream(ctx context.Context, req model.ItineraryRequest, onEvent func(StreamEvent)) (*model.ItineraryResponse, error) {
+	sendStatus := func(msg string) {
+		onEvent(StreamEvent{Type: "status", Payload: msg})
+	}
+
+	// 1. Resolve city
+	city, ok := model.Cities[req.City]
+	if !ok {
+		return nil, fmt.Errorf("unknown city: %s", req.City)
+	}
+
+	// 2. Map interests → Foursquare category IDs
+	categoryIDs := foursquare.CategoryIDsForInterests(req.Interests)
+
+	// 3. Fetch candidates
+	sendStatus("Searching for places...")
+	var candidates []model.Candidate
+	var resolvedNeighborhoods []model.Neighborhood
+	var neighborhoodGroups [][]model.Neighborhood
+
+	if len(req.Neighborhoods) > 0 {
+		resolvedNeighborhoods = resolveNeighborhoods(req.City, req.Neighborhoods)
+		if len(resolvedNeighborhoods) == 0 {
+			return nil, fmt.Errorf("no valid neighborhoods found for city %q", req.City)
+		}
+		var err error
+		candidates, err = p.fetchCandidatesForNeighborhoods(ctx, resolvedNeighborhoods, categoryIDs)
+		if err != nil {
+			return nil, fmt.Errorf("fetch neighborhood candidates: %w", err)
+		}
+		neighborhoodGroups = groupNeighborhoods(resolvedNeighborhoods, req.Days)
+	} else {
+		searchLat, searchLng := p.resolveSearchOrigin(ctx, req, city)
+		var err error
+		candidates, err = p.fetchCandidates(ctx, searchLat, searchLng, categoryIDs)
+		if err != nil {
+			return nil, fmt.Errorf("fetch candidates: %w", err)
+		}
+	}
+
+	if len(candidates) == 0 {
+		return nil, fmt.Errorf("no places found for city %q with interests %v", req.City, req.Interests)
+	}
+
+	log.Printf("planner: fetched %d candidates across %d categories", len(candidates), len(categoryIDs))
+
+	// 4. Score & shortlist
+	sendStatus("Scoring and ranking places...")
+	scored := scorer.Score(candidates, req)
+	oversized := scorer.Shortlist(scored, 2*shortlistSize*len(categoryIDs))
+	rescored := scorer.ProximityRescore(oversized, req)
+	shortlisted := scorer.Shortlist(rescored, shortlistSize*len(categoryIDs))
+
+	log.Printf("planner: shortlisted %d candidates", len(shortlisted))
+
+	// 4b. Resolve must-visit stops
+	if len(req.MustVisits) > 0 {
+		sendStatus("Resolving must-visit spots...")
+	}
+	for i := range req.MustVisits {
+		mv := &req.MustVisits[i]
+		match, err := p.fsq.MatchPlace(ctx, mv.Name, mv.Lat, mv.Lng)
+		if err != nil {
+			log.Printf("planner: foursquare match failed for pinned %q: %v, defaulting to activity", mv.Name, err)
+		}
+		if match != nil {
+			mv.Category = match.Category
+		} else {
+			if mv.Category == "" {
+				mv.Category = "activity"
+			}
+		}
+		shortlisted = append(shortlisted, model.ScoredCandidate{
+			Candidate: model.Candidate{
+				FsqID:    mv.ID,
+				Name:     mv.Name,
+				Lat:      mv.Lat,
+				Lng:      mv.Lng,
+				Category: mv.Category,
+			},
+			Score: 1000,
+		})
+	}
+
+	// 4c. Cluster pinned stops
+	var pinnedGroups [][]model.MustVisitPlace
+	if len(req.MustVisits) > 0 {
+		pinnedGroups = groupMustVisits(req.MustVisits, req.Days)
+	}
+
+	// 5. Build LLM prompt
+	systemPrompt, err := p.loadPrompt("prompts/rank_v1.txt")
+	if err != nil {
+		return nil, fmt.Errorf("load system prompt: %w", err)
+	}
+	if len(resolvedNeighborhoods) > 0 {
+		systemPrompt += neighborhoodPromptSuffix
+	}
+	if len(pinnedGroups) > 0 {
+		systemPrompt += pinnedGroupPromptSuffix
+	}
+
+	userPrompt, err := p.buildUserPrompt(shortlisted, req, neighborhoodGroups, pinnedGroups)
+	if err != nil {
+		return nil, fmt.Errorf("build user prompt: %w", err)
+	}
+
+	// 6. Stream LLM
+	sendStatus("Generating your itinerary...")
+	log.Printf("planner: calling LLM (streaming) for ranking + narrative...")
+
+	rawJSON, err := p.llm.ChatStream(ctx, systemPrompt, userPrompt, llm.StreamCallbacks{
+		OnThinking: func(token string) {
+			onEvent(StreamEvent{Type: "thinking", Payload: token})
+		},
+		OnToken: func(token string) {
+			onEvent(StreamEvent{Type: "token", Payload: token})
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("llm chat: %w", err)
+	}
+
+	log.Printf("[DEBUG] planner: raw LLM response:\n%s", rawJSON)
+
+	// 7. Parse LLM response
+	sendStatus("Finalizing your trip...")
+	var llmResp model.LLMItineraryResponse
+	if err := json.Unmarshal([]byte(rawJSON), &llmResp); err != nil {
+		return nil, fmt.Errorf("parse llm response: %w (raw: %.200s)", err, rawJSON)
+	}
+
+	// 8. Merge & build response
 	resp := p.buildResponse(city, llmResp, shortlisted, req.MustVisits)
 	return resp, nil
 }
