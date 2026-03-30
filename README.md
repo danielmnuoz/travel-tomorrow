@@ -36,6 +36,28 @@ Neighborhoods always take priority — when selected, the hotel location is igno
 - **Export to calendar** — download your itinerary as an `.ics` file to import into Google Calendar, Apple Calendar, or Outlook. Pick a trip start date and each stop becomes a calendar event with the correct date, time slot, location, and description. Client-side only — no backend or API keys needed.
 - **Must-visit spots** — add specific places you want in your itinerary (e.g. "MoMA", "Joe's Pizza") via real-time search powered by Nominatim (OpenStreetMap). Type at least 3 characters and results appear after a 1-second debounce. No cap on how many spots you can add. Pinned stops are locked into the itinerary — the LLM schedules them into appropriate days and time slots, and fills the rest around them. Pinned stops cannot be swapped out. Geographically close pinned stops are automatically clustered onto the same day. Each pinned stop is matched against Foursquare at generation time to resolve its category (food, cafe, landmark, etc.), which informs scheduling and meal-limit logic. Note: Nominatim's usage policy limits requests to 1 per second and prohibits bulk/heavy usage; the debounce respects this, but self-hosting Nominatim is recommended for production traffic.
 
+## Maps: Free vs Paid
+
+The map view switches between two providers based on the `PAY_API` environment variable.
+
+| | `PAY_API=false` (default) | `PAY_API=true` |
+|---|---|---|
+| **Map tiles** | Leaflet + OpenStreetMap | Google Maps JavaScript API |
+| **Routing** | OSRM (public, free, no key) | Google Directions API (walking) |
+| **Markers** | `react-leaflet` with `divIcon` | `@vis.gl/react-google-maps` with `AdvancedMarker` |
+| **Cost** | Free | Google Maps billing (Directions calls cost per request) |
+| **Env vars needed** | None | `MAPS_JS_API_KEY`, `GOOGLE_MAP_ID` |
+
+To enable Google Maps, set these in `.env.local`:
+
+```
+PAY_API=true
+MAPS_JS_API_KEY=your-google-maps-js-api-key
+GOOGLE_MAP_ID=your-map-id
+```
+
+The API key needs **Maps JavaScript API** and **Directions API** enabled in Google Cloud Console. For local development, set the key's application restriction to "None" — HTTP referrer restrictions don't work with `localhost`.
+
 ## How Preferences Shape the Itinerary
 
 Each form field influences the algorithm at different stages — some drive Foursquare queries, some adjust scoring weights, and some are guidance for the LLM's final picks.

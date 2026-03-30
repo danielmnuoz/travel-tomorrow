@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import L from "leaflet";
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
-import type { PlaceStop, DayPlan } from "@/types/itinerary";
+import type { PlaceStop, DayOverlay } from "@/types/itinerary";
 
 function makeIcon(color: string, number: number) {
   return L.divIcon({
@@ -57,19 +57,11 @@ function FitBounds({ stops }: { stops: PlaceStop[] }) {
   return null;
 }
 
-export interface DayOverlay {
-  dayNumber: number;
-  color: string;
-  stops: PlaceStop[];
-}
-
 interface LeafletMapProps {
   stops: PlaceStop[];
   dayColor: string;
   allDays?: DayOverlay[];
 }
-
-const PAY_API = process.env.NEXT_PUBLIC_PAY_API === "true" || process.env.NEXT_PUBLIC_PAY_API === "1";
 
 function fetchOSRMRoute(stops: PlaceStop[]): Promise<[number, number][]> {
   const coords = stops.map((s) => `${s.longitude},${s.latitude}`).join(";");
@@ -87,9 +79,6 @@ function fetchOSRMRoute(stops: PlaceStop[]): Promise<[number, number][]> {
     });
 }
 
-// TODO: implement Google Directions API route fetching when PAY_API is true
-// function fetchGoogleRoute(stops: PlaceStop[]): Promise<[number, number][]> { ... }
-
 function SingleDayLayer({ stops, dayColor }: { stops: PlaceStop[]; dayColor: string }) {
   const [route, setRoute] = useState<[number, number][]>([]);
 
@@ -98,13 +87,7 @@ function SingleDayLayer({ stops, dayColor }: { stops: PlaceStop[]; dayColor: str
       setRoute([]);
       return;
     }
-
-    if (PAY_API) {
-      // TODO: use Google Directions API for premium routing
-      fetchOSRMRoute(stops).then(setRoute).catch(() => setRoute([]));
-    } else {
-      fetchOSRMRoute(stops).then(setRoute).catch(() => setRoute([]));
-    }
+    fetchOSRMRoute(stops).then(setRoute).catch(() => setRoute([]));
   }, [stops]);
 
   return (

@@ -90,3 +90,9 @@ export interface RefreshStopRequest {
 export interface RefreshStopResponse {
   new_stop: PlaceStop;
 }
+
+export interface DayOverlay {
+  dayNumber: number;
+  color: string;
+  stops: PlaceStop[];
+}

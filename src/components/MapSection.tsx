@@ -17,8 +17,7 @@ import {
 } from "lucide-react";
 import MapWrapper from "@/components/MapWrapper";
 import RemapButton from "@/components/RemapButton";
-import type { DayPlan, PlaceIcon, PlaceStop } from "@/types/itinerary";
-import type { DayOverlay } from "./LeafletMap";
+import type { DayPlan, DayOverlay, PlaceIcon, PlaceStop } from "@/types/itinerary";
 import { DAY_COLORS } from "@/constants/itinerary";
 
 const iconMap: Record<PlaceIcon, LucideIcon> = {
