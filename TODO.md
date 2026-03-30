@@ -31,17 +31,6 @@
 - Boost curated places in the scorer
 - Feeds into must-visit spots and smart suggestions
 
-## Share Plan (View-Only Link)
-- **Requires Postgres** — itineraries need to be persisted with a unique ID
-- Save itinerary on generation, produce a shareable URL like `/plan/:id`
-- Recipient sees the itinerary read-only
-- Collaborative editing noted as a future possibility, not MVP
-
-## See All Routes on Map
-- Currently map shows one day's stops at a time
-- Add option to show all days simultaneously, color-coded by day number
-- Pass all days' stops to MapContainer, differentiate with distinct colors
-
 ## Cuisine Specification
 - In the advanced options, give a selection for specific type of cuisine the user likes or DOES NOT like. not sure which one would be more valuable.
 - Lean towards influencing some, not all, meal selections for that cuisine. 

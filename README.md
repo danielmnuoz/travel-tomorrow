@@ -18,7 +18,7 @@ Neighborhoods always take priority — when selected, the hotel location is igno
 - **Neighborhood scoping** — optionally select specific neighborhoods (loaded per city) to constrain each day's stops to a tight area instead of city-wide search.
 - **Address geocoding** — provide a street address to center place searches around your accommodation instead of defaulting to city center. Uses Nominatim (OpenStreetMap).
 - **Stop refresh** — swap out any individual stop for a new recommendation without regenerating the entire itinerary. Respects the same preferences, time slot, and category.
-- **Interactive map** — each day's stops display as a routed path on Google Maps with walking/transit directions based on your transport preference.
+- **Interactive map** — each day's stops display as a routed path on the map. Switch between single-day view and an overview mode showing all days simultaneously, color-coded by day number.
 - **Edit-in-place** — after generating an itinerary, reopen the form to tweak preferences without losing your current results.
 - **Day detail modal** — expand any day card into a timeline view grouped by morning/afternoon/evening with full stop descriptions.
 - **Multi-signal scoring algorithm** — candidates are scored using five weighted signals before the LLM sees them:
