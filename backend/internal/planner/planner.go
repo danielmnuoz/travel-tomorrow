@@ -110,9 +110,11 @@ func (p *Planner) Plan(ctx context.Context, req model.ItineraryRequest) (*model.
 			log.Printf("planner: foursquare match failed for pinned %q: %v, defaulting to activity", mv.Name, err)
 		}
 		if match != nil {
-			mv.Category = match.Category
-			log.Printf("planner: pinned %q → foursquare matched %q, raw categories: %v, normalized: %s",
-				mv.Name, match.Name, match.RawCategories, match.Category)
+			if mv.Category == "" {
+				mv.Category = match.Category
+			}
+			log.Printf("planner: pinned %q → foursquare matched %q, raw categories: %v, normalized: %s, using: %s",
+				mv.Name, match.Name, match.RawCategories, match.Category, mv.Category)
 		} else {
 			if mv.Category == "" {
 				mv.Category = "activity"
@@ -253,7 +255,9 @@ func (p *Planner) PlanStream(ctx context.Context, req model.ItineraryRequest, on
 			log.Printf("planner: foursquare match failed for pinned %q: %v, defaulting to activity", mv.Name, err)
 		}
 		if match != nil {
-			mv.Category = match.Category
+			if mv.Category == "" {
+				mv.Category = match.Category
+			}
 		} else {
 			if mv.Category == "" {
 				mv.Category = "activity"

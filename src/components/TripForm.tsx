@@ -6,6 +6,15 @@ import Button from "@/components/ui/Button";
 import FormHint from "@/components/ui/FormHint";
 import { getFormHints } from "@/lib/formHints";
 import type { Neighborhood, MustVisitPlace, PlaceSearchResult, PlaceCategory } from "@/types/itinerary";
+import {
+  Utensils,
+  Coffee,
+  Target,
+  Landmark,
+  ShoppingBag,
+  Moon,
+  type LucideIcon,
+} from "lucide-react";
 
 const CITIES = [
   { value: "nyc", label: "New York City" },
@@ -34,14 +43,14 @@ export interface TripFormData {
   maxFoodStops?: number | null;
 }
 
-const CATEGORY_OPTIONS = [
-  { value: "food", label: "Meal", icon: "🍽️" },
-  { value: "cafe", label: "Cafe", icon: "☕" },
-  { value: "activity", label: "Activity", icon: "🎯" },
-  { value: "landmark", label: "Landmark", icon: "🏛️" },
-  { value: "shopping", label: "Shopping", icon: "🛍️" },
-  { value: "nightlife", label: "Nightlife", icon: "🌙" },
-] as const;
+const CATEGORY_OPTIONS: { value: PlaceCategory; label: string; Icon: LucideIcon }[] = [
+  { value: "food", label: "Meal", Icon: Utensils },
+  { value: "cafe", label: "Cafe", Icon: Coffee },
+  { value: "activity", label: "Activity", Icon: Target },
+  { value: "landmark", label: "Landmark", Icon: Landmark },
+  { value: "shopping", label: "Shopping", Icon: ShoppingBag },
+  { value: "nightlife", label: "Nightlife", Icon: Moon },
+];
 
 function ChipSelect({
   label,
@@ -523,7 +532,7 @@ export default function TripForm({ onSubmit, onCancel }: TripFormProps) {
                                 className="inline-flex items-center gap-0.5 text-[10px] font-semibold bg-[var(--color-primary)]/10 hover:bg-[var(--color-primary)]/20 rounded-full px-1.5 py-0.5 transition-colors cursor-pointer"
                                 title="Change category"
                               >
-                                {cat.icon} {cat.label}
+                                <cat.Icon size={10} /> {cat.label}
                               </button>
                               <button
                                 type="button"
@@ -549,7 +558,7 @@ export default function TripForm({ onSubmit, onCancel }: TripFormProps) {
                                         : "hover:bg-[var(--color-bg-alt)] text-[var(--color-text-muted)]"
                                     }`}
                                   >
-                                    <span className="text-base">{opt.icon}</span>
+                                    <opt.Icon size={16} />
                                     {opt.label}
                                   </button>
                                 ))}

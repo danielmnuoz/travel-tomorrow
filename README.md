@@ -141,6 +141,10 @@ Optional, no cap on count.
 
 Pinned places are guaranteed in the itinerary with a maximum score (1000), so they always make the shortlist. Geographically close pins are clustered onto the same day. Each pin is matched against Foursquare to resolve its category, which informs scheduling and the meal limit. Pinned stops cannot be refreshed/swapped.
 
+Users can manually override a pinned stop's category (Meal, Cafe, Activity, Landmark, Shopping, Nightlife) via an inline picker on the stop chip. The category is auto-detected from Nominatim on search, then verified against Foursquare during planning — but if the user has set an override, their choice is preserved. This matters because Foursquare category IDs don't always map cleanly to our normalized categories. The selected category feeds into time-slot affinity scoring and the per-day meal limit.
+
+A **max food stops per day** control is available in Advanced Options (1-4, optional). When set, the LLM enforces it as a cap on combined food and cafe stops per day. If unset, defaults to 3.
+
 ### Summary
 
 | Field | Drives Foursquare Search | Adjusts Scorer Weights | Guides LLM |

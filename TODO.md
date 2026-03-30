@@ -18,12 +18,6 @@
 
 # Feature Ideas
 
-## User Category Overrides & Meal Controls
-- Optional user-assigned category per pinned stop: Meal, Cafe, Activity, Landmark, Shopping, Nightlife
-- Auto-detected from Nominatim class/type on search, user can click to override via inline category picker
-- Helps the planner make better scheduling decisions (time-of-day, meal limits)
-- Max food stops per day added to Advanced section (meals, cafes, snacks combined; optional, toggleable)
-
 ## Curated Lists
 - Maintain lists of notable places per city (Michelin picks, personal recommendations, etc.)
 - Store as JSON file per city to start, migrate to Postgres later
