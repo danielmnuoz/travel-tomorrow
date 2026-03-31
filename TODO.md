@@ -25,6 +25,3 @@
 - Boost curated places in the scorer
 - Feeds into must-visit spots and smart suggestions
 
-## Cuisine Specification
-- In the advanced options, give a selection for specific type of cuisine the user likes or DOES NOT like. not sure which one would be more valuable.
-- Lean towards influencing some, not all, meal selections for that cuisine. 

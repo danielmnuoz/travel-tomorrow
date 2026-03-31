@@ -30,6 +30,7 @@ type ItineraryRequest struct {
 	Pace           int              `json:"pace"`
 	Transport      string           `json:"transport"`
 	FoodStyles     []string         `json:"food_styles"`
+	Cuisines       []string         `json:"cuisines,omitempty"`
 	Interests      []string         `json:"interests"`
 	Address        string           `json:"address,omitempty"`
 	Neighborhoods  []string         `json:"neighborhoods,omitempty"`

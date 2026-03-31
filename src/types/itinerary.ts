@@ -29,6 +29,7 @@ export interface ItineraryRequest {
   pace: number;
   transport: string;
   food_styles: string[];
+  cuisines?: string[];
   interests: string[];
   address?: string;
   neighborhoods?: string[];

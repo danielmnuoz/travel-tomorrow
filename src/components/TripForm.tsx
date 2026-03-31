@@ -25,6 +25,7 @@ const CITIES = [
 ];
 
 const FOOD_STYLES = ["Cheap Eats", "Elegant", "Local", "Street Food", "Touristy"];
+const CUISINES = ["Italian", "Japanese", "Mexican", "Chinese", "Thai", "Indian", "French", "Korean", "Mediterranean", "American"];
 const INTERESTS = ["Museums", "Nightlife", "Cafes", "Shopping", "Parks", "History"];
 const TRANSPORT = ["Walk", "Metro", "Mix"];
 
@@ -39,6 +40,7 @@ export interface TripFormData {
   pace: number;
   transport: string;
   neighborhoods?: string[];
+  cuisines?: string[];
   mustVisits?: MustVisitPlace[];
   maxFoodStops?: number | null;
 }
@@ -150,6 +152,7 @@ export default function TripForm({ onSubmit, onCancel }: TripFormProps) {
   const [address, setAddress] = useState("");
   const [budget, setBudget] = useState(2);
   const [foodStyles, setFoodStyles] = useState<string[]>(["Local"]);
+  const [cuisines, setCuisines] = useState<string[]>([]);
   const [interests, setInterests] = useState<string[]>(["Cafes"]);
   const [pace, setPace] = useState(3);
   const [transport, setTransport] = useState("Mix");
@@ -276,6 +279,7 @@ export default function TripForm({ onSubmit, onCancel }: TripFormProps) {
       address,
       budget,
       foodStyles,
+      cuisines: cuisines.length > 0 ? cuisines : undefined,
       interests,
       pace,
       transport,
@@ -470,6 +474,18 @@ export default function TripForm({ onSubmit, onCancel }: TripFormProps) {
                   )}
                 </>
               )}
+                {/* Cuisine Preference */}
+                <div className="mt-6">
+                  <ChipSelect
+                    label="Cuisine Preference"
+                    options={CUISINES}
+                    selected={cuisines}
+                    onToggle={(item) => setCuisines(toggleChip(cuisines, item))}
+                  />
+                  <p className="text-xs text-[var(--color-text-muted)] mt-3">
+                    Other cuisines may still appear — this just nudges recommendations your way.
+                  </p>
+                </div>
                 {/* Must-Visit Places */}
                 <div className="mt-6" ref={placeSearchRef}>
                   <label className="block text-sm font-medium text-[var(--color-text)] mb-3">
