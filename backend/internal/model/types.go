@@ -1,5 +1,26 @@
 package model
 
+import "context"
+
+// --- Place Provider Interface ---
+
+// PlaceMatch holds the result of a place name+coordinate match.
+type PlaceMatch struct {
+	FsqID         string
+	Name          string
+	Category      string   // normalized: "food", "cafe", "activity", "landmark"
+	RawCategories []string // original provider category names
+}
+
+// PlaceSearcher is the interface for searching places. Both the Foursquare and
+// Google Places clients implement it.
+type PlaceSearcher interface {
+	SearchPlaces(ctx context.Context, lat, lng float64, radius int, categoryIDs []string, limit int) ([]Candidate, error)
+	MatchPlace(ctx context.Context, name string, lat, lng float64) (*PlaceMatch, error)
+	CategoryIDsForInterests(interests []string) []string
+	CategoryIDsForCategory(category string) []string
+}
+
 // --- City Registry ---
 
 type CityInfo struct {

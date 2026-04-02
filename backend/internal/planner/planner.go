@@ -11,7 +11,6 @@ import (
 	"sync"
 
 	"github.com/danielmnuoz/travel-tomorrow/backend/internal/config"
-	"github.com/danielmnuoz/travel-tomorrow/backend/internal/foursquare"
 	"github.com/danielmnuoz/travel-tomorrow/backend/internal/geocoder"
 	"github.com/danielmnuoz/travel-tomorrow/backend/internal/llm"
 	"github.com/danielmnuoz/travel-tomorrow/backend/internal/model"
@@ -39,14 +38,14 @@ type candidateForLLM struct {
 const neighborhoodSearchRadius = 1500 // meters — tighter radius for neighborhood-scoped searches
 
 type Planner struct {
-	fsq      foursquare.PlaceSearcher
+	places   model.PlaceSearcher
 	llm      *llm.Client
 	cfg      *config.Config
 	geocoder geocoder.Geocoder
 }
 
-func New(fsq foursquare.PlaceSearcher, llmClient *llm.Client, cfg *config.Config, geo geocoder.Geocoder) *Planner {
-	return &Planner{fsq: fsq, llm: llmClient, cfg: cfg, geocoder: geo}
+func New(places model.PlaceSearcher, llmClient *llm.Client, cfg *config.Config, geo geocoder.Geocoder) *Planner {
+	return &Planner{places: places, llm: llmClient, cfg: cfg, geocoder: geo}
 }
 
 func (p *Planner) Plan(ctx context.Context, req model.ItineraryRequest) (*model.ItineraryResponse, error) {
@@ -57,7 +56,7 @@ func (p *Planner) Plan(ctx context.Context, req model.ItineraryRequest) (*model.
 	}
 
 	// 2. Map interests → Foursquare category IDs
-	categoryIDs := foursquare.CategoryIDsForInterests(req.Interests)
+	categoryIDs := p.places.CategoryIDsForInterests(req.Interests)
 
 	// 3. Fetch candidates — neighborhood-scoped or city-wide
 	var candidates []model.Candidate
@@ -105,7 +104,7 @@ func (p *Planner) Plan(ctx context.Context, req model.ItineraryRequest) (*model.
 	// 4b. Resolve categories for must-visit stops via Foursquare, then inject
 	for i := range req.MustVisits {
 		mv := &req.MustVisits[i]
-		match, err := p.fsq.MatchPlace(ctx, mv.Name, mv.Lat, mv.Lng)
+		match, err := p.places.MatchPlace(ctx, mv.Name, mv.Lat, mv.Lng)
 		if err != nil {
 			log.Printf("planner: foursquare match failed for pinned %q: %v, defaulting to activity", mv.Name, err)
 		}
@@ -201,7 +200,7 @@ func (p *Planner) PlanStream(ctx context.Context, req model.ItineraryRequest, on
 	}
 
 	// 2. Map interests → Foursquare category IDs
-	categoryIDs := foursquare.CategoryIDsForInterests(req.Interests)
+	categoryIDs := p.places.CategoryIDsForInterests(req.Interests)
 
 	// 3. Fetch candidates
 	sendStatus("Searching for places...")
@@ -250,7 +249,7 @@ func (p *Planner) PlanStream(ctx context.Context, req model.ItineraryRequest, on
 	}
 	for i := range req.MustVisits {
 		mv := &req.MustVisits[i]
-		match, err := p.fsq.MatchPlace(ctx, mv.Name, mv.Lat, mv.Lng)
+		match, err := p.places.MatchPlace(ctx, mv.Name, mv.Lat, mv.Lng)
 		if err != nil {
 			log.Printf("planner: foursquare match failed for pinned %q: %v, defaulting to activity", mv.Name, err)
 		}
@@ -358,10 +357,10 @@ func (p *Planner) RefreshStop(ctx context.Context, req model.RefreshStopRequest)
 	searchLat, searchLng := p.resolveSearchOrigin(ctx, req.Preferences, city)
 
 	// 4. Map category → Foursquare category IDs
-	categoryIDs := foursquare.CategoryIDsForCategory(oldStop.Category)
+	categoryIDs := p.places.CategoryIDsForCategory(oldStop.Category)
 	if len(categoryIDs) == 0 {
 		// Fallback: use all interests
-		categoryIDs = foursquare.CategoryIDsForInterests(req.Preferences.Interests)
+		categoryIDs = p.places.CategoryIDsForInterests(req.Preferences.Interests)
 	}
 
 	// 5. Fetch fresh candidates
@@ -453,7 +452,7 @@ func (p *Planner) fetchCandidates(ctx context.Context, lat, lng float64, categor
 		wg.Add(1)
 		go func(idx int, id string) {
 			defer wg.Done()
-			c, err := p.fsq.SearchPlaces(ctx, lat, lng, p.cfg.SearchRadius, []string{id}, 15)
+			c, err := p.places.SearchPlaces(ctx, lat, lng, p.cfg.SearchRadius, []string{id}, 15)
 			results[idx] = result{candidates: c, err: err}
 		}(i, catID)
 	}
@@ -819,7 +818,7 @@ func (p *Planner) fetchCandidatesWithRadius(ctx context.Context, lat, lng float6
 		wg.Add(1)
 		go func(idx int, id string) {
 			defer wg.Done()
-			c, err := p.fsq.SearchPlaces(ctx, lat, lng, radius, []string{id}, 15)
+			c, err := p.places.SearchPlaces(ctx, lat, lng, radius, []string{id}, 15)
 			results[idx] = result{candidates: c, err: err}
 		}(i, catID)
 	}

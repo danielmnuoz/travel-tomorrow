@@ -10,8 +10,10 @@ import (
 	"github.com/danielmnuoz/travel-tomorrow/backend/internal/config"
 	"github.com/danielmnuoz/travel-tomorrow/backend/internal/foursquare"
 	"github.com/danielmnuoz/travel-tomorrow/backend/internal/geocoder"
+	"github.com/danielmnuoz/travel-tomorrow/backend/internal/google"
 	"github.com/danielmnuoz/travel-tomorrow/backend/internal/handler"
 	"github.com/danielmnuoz/travel-tomorrow/backend/internal/llm"
+	"github.com/danielmnuoz/travel-tomorrow/backend/internal/model"
 	"github.com/danielmnuoz/travel-tomorrow/backend/internal/planner"
 )
 
@@ -21,13 +23,21 @@ func main() {
 		log.Fatalf("config: %v", err)
 	}
 
-	// Initialize service clients
-	fsqClient := foursquare.NewClient(cfg.FoursquareAPIKey, nil, cfg.Debug, cfg.PayAPI)
+	// Initialize place provider based on PAY_API setting
+	var placesClient model.PlaceSearcher
+	if cfg.PayAPI {
+		log.Printf("Using Google Places API (PAY_API=true)")
+		placesClient = google.NewClient(cfg.GooglePlacesAPIKey, nil, cfg.Debug)
+	} else {
+		log.Printf("Using Foursquare API (PAY_API=false)")
+		placesClient = foursquare.NewClient(cfg.FoursquareAPIKey, nil, cfg.Debug)
+	}
+
 	rdb := cache.NewRedisClient(cfg.RedisURL)
-	cachedFsq := cache.NewCachedSearcher(fsqClient, rdb, 7*24*time.Hour)
+	cachedPlaces := cache.NewCachedSearcher(placesClient, rdb, 7*24*time.Hour)
 	llmClient := llm.NewClient(cfg.OllamaURL, cfg.OllamaModel, nil)
 	geo := geocoder.NewNominatimClient(nil)
-	p := planner.New(cachedFsq, llmClient, cfg, geo)
+	p := planner.New(cachedPlaces, llmClient, cfg, geo)
 	h := handler.New(p)
 
 	// Routes

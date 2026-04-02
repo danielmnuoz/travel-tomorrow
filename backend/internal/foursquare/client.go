@@ -67,32 +67,16 @@ func CategoryIDsForCategory(category string) []string {
 	return categoryToFsqIDs[strings.ToLower(category)]
 }
 
-// PlaceMatch holds the result of a place name+coordinate match.
-type PlaceMatch struct {
-	FsqID         string
-	Name          string
-	Category      string   // normalized: "food", "cafe", "activity", "landmark"
-	RawCategories []string // original Foursquare category names
-}
-
-// PlaceSearcher is the interface for searching places. *Client satisfies it.
-type PlaceSearcher interface {
-	SearchPlaces(ctx context.Context, lat, lng float64, radius int, categoryIDs []string, limit int) ([]model.Candidate, error)
-	MatchPlace(ctx context.Context, name string, lat, lng float64) (*PlaceMatch, error)
-}
-
 // Client wraps the Foursquare Places API.
 type Client struct {
 	apiKey     string
 	httpClient *http.Client
 	debug      bool
-	payAPI     bool
 }
 
 // NewClient creates a new Foursquare API client. If httpClient is nil,
-// http.DefaultClient is used. When payAPI is true, premium fields (rating,
-// price, photos) are requested.
-func NewClient(apiKey string, httpClient *http.Client, debug bool, payAPI bool) *Client {
+// http.DefaultClient is used.
+func NewClient(apiKey string, httpClient *http.Client, debug bool) *Client {
 	if httpClient == nil {
 		httpClient = http.DefaultClient
 	}
@@ -100,8 +84,17 @@ func NewClient(apiKey string, httpClient *http.Client, debug bool, payAPI bool) 
 		apiKey:     apiKey,
 		httpClient: httpClient,
 		debug:      debug,
-		payAPI:     payAPI,
 	}
+}
+
+// CategoryIDsForInterests delegates to the package-level function, satisfying model.PlaceSearcher.
+func (c *Client) CategoryIDsForInterests(interests []string) []string {
+	return CategoryIDsForInterests(interests)
+}
+
+// CategoryIDsForCategory delegates to the package-level function, satisfying model.PlaceSearcher.
+func (c *Client) CategoryIDsForCategory(category string) []string {
+	return CategoryIDsForCategory(category)
 }
 
 // SearchPlaces queries the Foursquare Places API for venues near the given
@@ -118,7 +111,7 @@ func (c *Client) SearchPlaces(ctx context.Context, lat, lng float64, radius int,
 
 // MatchPlace searches Foursquare by name near given coordinates to resolve
 // a place's category. Uses a tight 200m radius and returns the best match.
-func (c *Client) MatchPlace(ctx context.Context, name string, lat, lng float64) (*PlaceMatch, error) {
+func (c *Client) MatchPlace(ctx context.Context, name string, lat, lng float64) (*model.PlaceMatch, error) {
 	params := url.Values{}
 	params.Set("query", name)
 	params.Set("ll", fmt.Sprintf("%f,%f", lat, lng))
@@ -135,7 +128,7 @@ func (c *Client) MatchPlace(ctx context.Context, name string, lat, lng float64) 
 	}
 
 	best := candidates[0]
-	return &PlaceMatch{
+	return &model.PlaceMatch{
 		FsqID:         best.FsqID,
 		Name:          best.Name,
 		Category:      best.Category,
@@ -145,12 +138,6 @@ func (c *Client) MatchPlace(ctx context.Context, name string, lat, lng float64) 
 
 // doSearch executes a Foursquare Places Search request with the given params.
 func (c *Client) doSearch(ctx context.Context, params url.Values) ([]model.Candidate, error) {
-	if c.payAPI {
-		// TODO: request premium Foursquare fields (rating, price, photos, tips)
-		// params.Set("fields", "fsq_place_id,name,latitude,longitude,distance,categories,rating,price,photos,tips")
-		_ = c.payAPI // suppress unused hint until premium fields are wired up
-	}
-
 	reqURL := placesSearchURL + "?" + params.Encode()
 
 	if c.debug {

@@ -7,20 +7,34 @@ import (
 )
 
 type Config struct {
-	Port             string
-	FoursquareAPIKey string
-	OllamaURL        string
-	OllamaModel      string
-	SearchRadius     int
-	Debug            bool
-	RedisURL         string
-	PayAPI           bool
+	Port               string
+	FoursquareAPIKey   string
+	GooglePlacesAPIKey string
+	OllamaURL          string
+	OllamaModel        string
+	SearchRadius       int
+	Debug              bool
+	RedisURL           string
+	PayAPI             bool
 }
 
 func Load() (*Config, error) {
-	apiKey := os.Getenv("FOUR_SQUARE_SERVICE_API_KEY")
-	if apiKey == "" {
-		return nil, fmt.Errorf("FOUR_SQUARE_SERVICE_API_KEY is required")
+	payAPI := os.Getenv("PAY_API") == "true" || os.Getenv("PAY_API") == "1"
+
+	fsqKey := os.Getenv("FOUR_SQUARE_SERVICE_API_KEY")
+	googleKey := os.Getenv("GOOGLE_PLACES_API_KEY")
+	if googleKey == "" {
+		googleKey = os.Getenv("MAPS_JS_API_KEY")
+	}
+
+	if payAPI {
+		if googleKey == "" {
+			return nil, fmt.Errorf("PAY_API=true requires GOOGLE_PLACES_API_KEY or MAPS_JS_API_KEY")
+		}
+	} else {
+		if fsqKey == "" {
+			return nil, fmt.Errorf("FOUR_SQUARE_SERVICE_API_KEY is required")
+		}
 	}
 
 	port := os.Getenv("API_PORT")
@@ -46,7 +60,6 @@ func Load() (*Config, error) {
 	}
 
 	debug := os.Getenv("DEBUG") == "true" || os.Getenv("DEBUG") == "1"
-	payAPI := os.Getenv("PAY_API") == "true" || os.Getenv("PAY_API") == "1"
 
 	redisURL := os.Getenv("REDIS_URL")
 	if redisURL == "" {
@@ -54,13 +67,14 @@ func Load() (*Config, error) {
 	}
 
 	return &Config{
-		Port:             port,
-		FoursquareAPIKey: apiKey,
-		OllamaURL:        ollamaURL,
-		OllamaModel:      ollamaModel,
-		SearchRadius:     radius,
-		Debug:            debug,
-		RedisURL:         redisURL,
-		PayAPI:           payAPI,
+		Port:               port,
+		FoursquareAPIKey:   fsqKey,
+		GooglePlacesAPIKey: googleKey,
+		OllamaURL:          ollamaURL,
+		OllamaModel:        ollamaModel,
+		SearchRadius:       radius,
+		Debug:              debug,
+		RedisURL:           redisURL,
+		PayAPI:             payAPI,
 	}, nil
 }

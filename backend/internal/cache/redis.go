@@ -7,7 +7,6 @@ import (
 	"log"
 	"time"
 
-	"github.com/danielmnuoz/travel-tomorrow/backend/internal/foursquare"
 	"github.com/danielmnuoz/travel-tomorrow/backend/internal/model"
 	"github.com/redis/go-redis/v9"
 )
@@ -21,13 +20,13 @@ func NewRedisClient(addr string) *redis.Client {
 
 // CachedSearcher wraps a PlaceSearcher with Redis caching.
 type CachedSearcher struct {
-	inner foursquare.PlaceSearcher
+	inner model.PlaceSearcher
 	rdb   *redis.Client
 	ttl   time.Duration
 }
 
 // NewCachedSearcher returns a CachedSearcher that caches results in Redis.
-func NewCachedSearcher(inner foursquare.PlaceSearcher, rdb *redis.Client, ttl time.Duration) *CachedSearcher {
+func NewCachedSearcher(inner model.PlaceSearcher, rdb *redis.Client, ttl time.Duration) *CachedSearcher {
 	return &CachedSearcher{inner: inner, rdb: rdb, ttl: ttl}
 }
 
@@ -48,8 +47,18 @@ func (c *CachedSearcher) SearchPlaces(ctx context.Context, lat, lng float64, rad
 }
 
 // MatchPlace delegates to the inner searcher (no caching for match lookups).
-func (c *CachedSearcher) MatchPlace(ctx context.Context, name string, lat, lng float64) (*foursquare.PlaceMatch, error) {
+func (c *CachedSearcher) MatchPlace(ctx context.Context, name string, lat, lng float64) (*model.PlaceMatch, error) {
 	return c.inner.MatchPlace(ctx, name, lat, lng)
+}
+
+// CategoryIDsForInterests delegates to the inner searcher.
+func (c *CachedSearcher) CategoryIDsForInterests(interests []string) []string {
+	return c.inner.CategoryIDsForInterests(interests)
+}
+
+// CategoryIDsForCategory delegates to the inner searcher.
+func (c *CachedSearcher) CategoryIDsForCategory(category string) []string {
+	return c.inner.CategoryIDsForCategory(category)
 }
 
 // getFromCache tries to retrieve candidates from Redis. Returns (nil, false) on miss/error.
@@ -81,7 +90,7 @@ func (c *CachedSearcher) setInCache(ctx context.Context, key string, candidates 
 }
 
 // cacheKey builds a deterministic cache key for category-based searches.
-// Format: fsq:{lat},{lng}:{categoryID1,categoryID2}:{radius}
+// Format: places:{lat},{lng}:{categoryID1,categoryID2}:{radius}
 func cacheKey(lat, lng float64, categoryIDs []string, radius int) string {
 	cats := ""
 	for i, id := range categoryIDs {
@@ -90,6 +99,5 @@ func cacheKey(lat, lng float64, categoryIDs []string, radius int) string {
 		}
 		cats += id
 	}
-	return fmt.Sprintf("fsq:%.4f,%.4f:%s:%d", lat, lng, cats, radius)
+	return fmt.Sprintf("places:%.4f,%.4f:%s:%d", lat, lng, cats, radius)
 }
-

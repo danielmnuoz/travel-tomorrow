@@ -8,7 +8,7 @@ import (
 	"github.com/danielmnuoz/travel-tomorrow/backend/internal/model"
 )
 
-// Default scoring weights (5 signals).
+// Default scoring weights — free mode (5 signals).
 const (
 	defaultWDistance  = 0.40
 	defaultWCategory = 0.15
@@ -17,13 +17,28 @@ const (
 	defaultWProximity = 0.10
 )
 
-// weights holds the five scoring weights.
+// Premium scoring weights (8 signals).
+const (
+	premiumWDistance   = 0.20
+	premiumWCategory  = 0.05
+	premiumWInterest  = 0.15
+	premiumWTime      = 0.05
+	premiumWProximity = 0.05
+	premiumWRating    = 0.25
+	premiumWPopular   = 0.10
+	premiumWPrice     = 0.15
+)
+
+// weights holds the scoring weights.
 type weights struct {
-	distance  float64
-	category  float64
-	interest  float64
-	time      float64
-	proximity float64
+	distance   float64
+	category   float64
+	interest   float64
+	time       float64
+	proximity  float64
+	rating     float64
+	popularity float64
+	priceMatch float64
 }
 
 // interestToCategory maps user-facing interest strings to normalized categories.
@@ -47,12 +62,24 @@ var categoryTimeAffinity = map[string][3]float64{
 	"activity": {0.5, 0.7, 0.4},
 }
 
+// hasPremiumData returns true if any candidate has rating data populated.
+func hasPremiumData(candidates []model.Candidate) bool {
+	for _, c := range candidates {
+		if c.Rating > 0 {
+			return true
+		}
+	}
+	return false
+}
+
 // Score scores all candidates against the given preferences.
-// Uses five signals: distance, category diversity, interest affinity, time bonus, and proximity (applied post-hoc).
+// Auto-detects premium mode if any candidate has rating data.
 func Score(candidates []model.Candidate, prefs model.ItineraryRequest) []model.ScoredCandidate {
 	if len(candidates) == 0 {
 		return nil
 	}
+
+	premium := hasPremiumData(candidates)
 
 	// 1. Find maxDistance among all candidates.
 	maxDist := 0.0
@@ -65,8 +92,21 @@ func Score(candidates []model.Candidate, prefs model.ItineraryRequest) []model.S
 		maxDist = 1.0
 	}
 
+	// Find max reviews for popularity normalization (premium mode).
+	maxReviews := 0
+	if premium {
+		for _, c := range candidates {
+			if c.Reviews > maxReviews {
+				maxReviews = c.Reviews
+			}
+		}
+		if maxReviews == 0 {
+			maxReviews = 1
+		}
+	}
+
 	// 2. Compute adjusted weights based on prefs.
-	w := adjustWeights(prefs)
+	w := adjustWeights(prefs, premium)
 
 	// 3. Count category frequencies for diversity bonus.
 	catCount := make(map[string]int)
@@ -94,6 +134,12 @@ func Score(candidates []model.Candidate, prefs model.ItineraryRequest) []model.S
 			w.interest*affinity +
 			w.time*tBonus
 
+		if premium {
+			s += w.rating * ratingScore(c.Rating)
+			s += w.popularity * popularityScore(c.Reviews, maxReviews)
+			s += w.priceMatch * priceMatchScore(c.Price, prefs.Budget)
+		}
+
 		scored[i] = model.ScoredCandidate{
 			Candidate: c,
 			Score:     s,
@@ -111,7 +157,14 @@ func ProximityRescore(scored []model.ScoredCandidate, prefs model.ItineraryReque
 		return scored
 	}
 
-	w := adjustWeights(prefs)
+	premium := false
+	for _, s := range scored {
+		if s.Rating > 0 {
+			premium = true
+			break
+		}
+	}
+	w := adjustWeights(prefs, premium)
 
 	const nearestK = 5
 
@@ -186,8 +239,33 @@ func Shortlist(scored []model.ScoredCandidate, topN int) []model.ScoredCandidate
 	return scored[:topN]
 }
 
-// adjustWeights returns scoring weights adjusted for user preferences.
-func adjustWeights(prefs model.ItineraryRequest) weights {
+// adjustWeights returns scoring weights adjusted for user preferences and premium mode.
+func adjustWeights(prefs model.ItineraryRequest, premium bool) weights {
+	if premium {
+		w := weights{
+			distance:   premiumWDistance,
+			category:   premiumWCategory,
+			interest:   premiumWInterest,
+			time:       premiumWTime,
+			proximity:  premiumWProximity,
+			rating:     premiumWRating,
+			popularity: premiumWPopular,
+			priceMatch: premiumWPrice,
+		}
+		// Transport == "walk" or Pace >= 4 (packed): boost distance + proximity.
+		if prefs.Transport == "walk" || prefs.Pace >= 4 {
+			w.distance = 0.25
+			w.proximity = 0.10
+			w.interest = 0.10
+			w.rating = 0.20
+			w.popularity = 0.10
+			w.priceMatch = 0.10
+			w.category = 0.05
+			w.time = 0.10
+		}
+		return w
+	}
+
 	w := weights{
 		distance:  defaultWDistance,
 		category:  defaultWCategory,
@@ -207,6 +285,48 @@ func adjustWeights(prefs model.ItineraryRequest) weights {
 
 	return w
 }
+
+// --- Premium scoring functions ---
+
+// ratingScore normalizes a 1.0–5.0 rating to 0.0–1.0. Returns 0 if unknown.
+func ratingScore(rating float64) float64 {
+	if rating <= 0 {
+		return 0
+	}
+	return normalize(rating, 1.0, 5.0)
+}
+
+// popularityScore normalizes review count relative to the batch maximum.
+func popularityScore(reviews, maxReviews int) float64 {
+	if maxReviews <= 0 || reviews <= 0 {
+		return 0
+	}
+	return float64(reviews) / float64(maxReviews)
+}
+
+// priceMatchScore returns how well a candidate's price matches the user budget.
+// exact=1.0, off-by-1=0.6, off-by-2=0.3, else=0.0, unknown=0.5
+func priceMatchScore(candidatePrice, userBudget int) float64 {
+	if candidatePrice <= 0 || userBudget <= 0 {
+		return 0.5 // neutral when unknown
+	}
+	diff := candidatePrice - userBudget
+	if diff < 0 {
+		diff = -diff
+	}
+	switch diff {
+	case 0:
+		return 1.0
+	case 1:
+		return 0.6
+	case 2:
+		return 0.3
+	default:
+		return 0.0
+	}
+}
+
+// --- Shared helpers ---
 
 // buildInterestCategories maps user interests to the set of normalized categories.
 func buildInterestCategories(interests []string) map[string]bool {
@@ -243,11 +363,6 @@ func timeBonus(category string) float64 {
 	}
 	return maxVal
 }
-
-// TODO: re-enable when premium fields available
-// func priceMatchScore(candidatePrice, userBudget int) float64 { ... }
-// Add rating (W=0.30), popularity (W=0.15), price (W=0.25) weights back
-// and reduce distance/category weights accordingly.
 
 // normalize clamps value into [min, max] and returns a value in [0, 1].
 func normalize(value, min, max float64) float64 {
