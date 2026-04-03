@@ -17,15 +17,6 @@ interface FormState {
 export function getFormHints(state: FormState): FormHint[] {
   const hints: FormHint[] = [];
 
-  if (state.budget === 1 && state.foodStyles.includes("Elegant")) {
-    hints.push({
-      id: "budget-elegant",
-      section: "style",
-      message:
-        "Elegant dining can be tough on a $ budget — results may lean more upscale-casual.",
-    });
-  }
-
   if (state.foodStyles.length === 0) {
     hints.push({
       id: "no-food",

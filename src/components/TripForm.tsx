@@ -24,7 +24,7 @@ const CITIES = [
   { value: "barcelona", label: "Barcelona" },
 ];
 
-const FOOD_STYLES = ["Cheap Eats", "Elegant", "Local", "Street Food", "Touristy"];
+const FOOD_STYLES = ["Local", "Street Food", "Casual", "Fine Dining", "Touristy"];
 const CUISINES = ["Italian", "Japanese", "Mexican", "Chinese", "Thai", "Indian", "French", "Korean", "Mediterranean", "American"];
 const INTERESTS = ["Museums", "Nightlife", "Cafes", "Shopping", "Parks", "History"];
 const TRANSPORT = ["Walk", "Metro", "Mix"];
