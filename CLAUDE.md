@@ -27,7 +27,8 @@
 - DB: Postgres (local Docker, Neon later)
 - Cache: Redis (Docker)
 - LLM: Ollama (local models)
-- Places: Foursquare API
+- Places: Foursquare API (free, `PAY_API=false`) or Google Places API (paid, `PAY_API=true`)
+- Geocoding / Must-visit search: Nominatim (OpenStreetMap, always, no key required)
 - Maps: Google Maps (web)
 - Auth: TBD (not yet implemented)
 

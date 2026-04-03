@@ -15,9 +15,8 @@ Neighborhoods always take priority — when selected, the hotel location is igno
 
 - **Vibe-based trip planning** — configure budget, pace, food style, interests, and transport mode to shape the itinerary without picking individual places.
 - **Multi-day itineraries** — generates 1–7 day plans, each with a neighborhood focus, theme, and stops organized by time slot (morning, afternoon, evening).
-- **Neighborhood scoping** — optionally select specific neighborhoods (loaded per city) to constrain each day's stops to a tight area instead of city-wide search.
-- **Address geocoding** — provide a street address to center place searches around your accommodation instead of defaulting to city center. Uses Nominatim (OpenStreetMap).
-- **Stop refresh** — swap out any individual stop for a new recommendation without regenerating the entire itinerary. Respects the same preferences, time slot, and category.
+- **Neighborhood scoping** — optionally select a desired neighborhood(s) (loaded per city) to constrain each day's stops to a tight area instead of city-wide search.
+- **Hotel/Stay Address geocoding** — provide a street address to center place searches around your accommodation instead of defaulting to city center. Uses Nominatim (OpenStreetMap).
 - **Interactive map** — each day's stops display as a routed path on the map. Switch between single-day view and an overview mode showing all days simultaneously, color-coded by day number.
 - **Edit-in-place** — after generating an itinerary, reopen the form to tweak preferences without losing your current results.
 - **Day detail modal** — expand any day card into a timeline view grouped by morning/afternoon/evening with full stop descriptions.
@@ -51,8 +50,9 @@ The `PAY_API` environment variable switches both the frontend map and the backen
 | **Map tiles** | Leaflet + OpenStreetMap | Google Maps JavaScript API |
 | **Routing** | OSRM (public, free, no key) | Google Directions API (walking) |
 | **Markers** | `react-leaflet` with `divIcon` | `@vis.gl/react-google-maps` with `AdvancedMarker` |
+| **Geocoding + must-visit search** | Nominatim (OpenStreetMap, free, no key) | Nominatim (OpenStreetMap, free, no key) |
 | **Cost** | Free | Google Maps + Places billing |
-| **Env vars needed** | `FOUR_SQUARE_SERVICE_API_KEY` | `MAPS_JS_API_KEY`, `GOOGLE_MAP_ID` |
+| **Env vars needed** | `FOUR_SQUARE_SERVICE_API_KEY` | `MAPS_JS_API_KEY`, `GOOGLE_MAP_ID`, `GOOGLE_PLACES_API_KEY` (optional, falls back to `MAPS_JS_API_KEY`) |
 
 To enable paid mode, set these in `.env.local`:
 
