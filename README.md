@@ -13,31 +13,18 @@ Neighborhoods always take priority — when selected, the hotel location is igno
 
 ## Features
 
-- **Vibe-based trip planning** — configure budget, pace, food style, interests, and transport mode to shape the itinerary without picking individual places.
-- **Multi-day itineraries** — generates 1–7 day plans, each with a neighborhood focus, theme, and stops organized by time slot (morning, afternoon, evening).
-- **Neighborhood scoping** — optionally select a desired neighborhood(s) (loaded per city) to constrain each day's stops to a tight area instead of city-wide search.
-- **Hotel/Stay Address geocoding** — provide a street address to center place searches around your accommodation instead of defaulting to city center. Uses Nominatim (OpenStreetMap).
-- **Interactive map** — each day's stops display as a routed path on the map. Switch between single-day view and an overview mode showing all days simultaneously, color-coded by day number.
-- **Edit-in-place** — after generating an itinerary, reopen the form to tweak preferences without losing your current results.
-- **Day detail modal** — expand any day card into a timeline view grouped by morning/afternoon/evening with full stop descriptions.
-- **Multi-signal scoring algorithm** — candidates are scored using weighted signals before the LLM sees them. In free mode (Foursquare, 5 signals):
-  - **Distance** (0.40) — closer to search origin scores higher.
-  - **Category diversity** (0.15) — rarer categories get a bonus to avoid homogeneous results.
-  - **Interest affinity** (0.25) — binary boost when a candidate's category matches user-selected interests (e.g. "museums" → activity candidates).
-  - **Time bonus** (0.10) — categories with strong time-slot fit score higher (cafés for morning, restaurants for evening).
-  - **Proximity clustering** (0.10) — post-scoring pass rewards candidates near other high-scoring candidates, forming natural walkable clusters.
-  - Walk mode and packed pace shift weights toward distance and proximity for tighter geographic grouping.
-  - When `PAY_API=true` (Google Places), three premium signals are auto-detected and added (8 signals total):
-    - **Rating** (0.25) — Google's 1–5 star rating, normalized to 0–1. Higher-rated places score higher but aren't hard-filtered — a well-located 3.5-star spot can still beat a distant 4.5-star one through distance, interest, and clustering signals.
-    - **Popularity** (0.10) — review count normalized against the batch maximum.
-    - **Price match** (0.15) — how closely the place's price tier matches the user's budget (exact=1.0, off-by-1=0.6, off-by-2=0.3).
-- **LLM-powered ranking** — scored and shortlisted candidates are passed to an LLM, which picks final stops and writes descriptions and themes.
-- **Live token streaming** — itinerary generation streams tokens in real-time via SSE instead of showing a blank spinner. Supports thinking models (qwen3, deepseek-r1, etc.) — reasoning output streams as a visible "Thinking" section before the JSON itinerary builds. Uses Ollama's native `think: true` parameter. Works with both local and Ollama cloud models.
-- **Redis caching** — place API responses are cached (7-day TTL) to avoid redundant calls during iteration.
-- **Responsive layout** — mobile stacks map above day cards; desktop uses a split view with a sticky map.
-- **Form hints** — subtle inline nudges appear when form settings conflict (e.g. low budget + elegant dining) or when no food styles/interests are selected, helping users catch mismatches before generating.
-- **Export to calendar** — download your itinerary as an `.ics` file to import into Google Calendar, Apple Calendar, or Outlook. Pick a trip start date and each stop becomes a calendar event with the correct date, time slot, location, and description. Client-side only — no backend or API keys needed.
-- **Must-visit spots** — add specific places you want in your itinerary (e.g. "MoMA", "Joe's Pizza") via real-time search powered by Nominatim (OpenStreetMap). Type at least 3 characters and results appear after a 1-second debounce. No cap on how many spots you can add. Pinned stops are locked into the itinerary — the LLM schedules them into appropriate days and time slots, and fills the rest around them. Pinned stops cannot be swapped out. Geographically close pinned stops are automatically clustered onto the same day. Each pinned stop is matched against Foursquare at generation time to resolve its category (food, cafe, landmark, etc.), which informs scheduling and meal-limit logic. Note: Nominatim's usage policy limits requests to 1 per second and prohibits bulk/heavy usage; the debounce respects this, but self-hosting Nominatim is recommended for production traffic.
+- **Vibe-based planning** — set budget, pace, food style, interests, and transport mode; the system handles place selection.
+- **Multi-day itineraries** — 1–7 day plans with a neighborhood focus and stops grouped by morning / afternoon / evening.
+- **Neighborhood scoping** — pin specific neighborhoods to constrain each day's search to a tight area.
+- **Hotel geocoding** — provide a stay address to center searches around your accommodation (via Nominatim).
+- **Must-visit spots** — search and pin specific places (e.g. "MoMA", "Joe's Pizza"); they're guaranteed in the itinerary and auto-clustered by day.
+- **Multi-signal scoring** — candidates are ranked before the LLM sees them using distance, interest affinity, category diversity, time-slot fit, and proximity clustering. Premium mode (`PAY_API=true`) adds rating, popularity, and price-match signals.
+- **LLM ranking + narrative** — shortlisted candidates go to an Ollama model, which picks final stops and writes descriptions and day themes.
+- **Live streaming** — generation streams token-by-token via SSE. Thinking models (e.g. qwen3, deepseek-r1) stream their reasoning visibly before the itinerary builds.
+- **Interactive map** — routed path per day, with an overview mode showing all days color-coded simultaneously.
+- **Export to calendar** — download an `.ics` file; each stop becomes a calendar event with date, time slot, and location.
+- **Edit-in-place** — reopen the form to tweak preferences without losing the current itinerary.
+- **Redis caching** — place API responses cached for 7 days to avoid redundant calls during iteration.
 
 ## Free vs Paid (`PAY_API`)
 
