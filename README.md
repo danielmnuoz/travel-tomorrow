@@ -175,3 +175,35 @@ A **max food stops per day** control is available in Advanced Options (1-4, opti
 | Transport | — | Yes (walk mode) | Map directions |
 | Neighborhoods | Yes (search centers + radius) | — | Yes (day assignments) |
 | Must-Visits | Yes (category matching) | Yes (score = 1000) | Yes (pinned flag) |
+
+---
+
+## Running Locally
+
+**Prerequisites:** Docker Desktop, Go, Ollama, Node.js
+
+**1. Create `.env.local` in the project root**
+```
+FOUR_SQUARE_SERVICE_API_KEY=your-key
+FOUR_SQUARE_PLACE_API_KEY=your-key
+MAPS_JS_API_KEY=your-key              # required for paid mode
+GOOGLE_MAP_ID=your-map-id             # required for paid mode
+OLLAMA_MODEL=llama3.1:8b              # any model available in your Ollama install
+PAY_API=false                         # set true to use Google Places + Maps
+DEBUG=false
+```
+See the [Free vs Paid](#free-vs-paid-pay_api) section for paid-mode keys.
+
+**2. Start the backend**
+```bash
+ollama serve                 # terminal 1 — keep running
+docker compose up --build    # terminal 2 — starts API + Redis
+```
+
+**3. Start the frontend**
+```bash
+npm install
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000).
