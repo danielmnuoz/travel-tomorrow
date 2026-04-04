@@ -1,5 +1,11 @@
 # travel-tomorrow
 
+
+<!-- Replace demo.gif with your recording once ready -->
+![Travel Tomorrow demo](docs/screenshots/demo.gif)
+
+*Travel Form → AI streaming → itinerary board → map view*
+
 ## Place Search Behavior
 
 | Scenario | Search Center | Radius |
