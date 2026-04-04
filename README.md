@@ -6,17 +6,6 @@
 
 *Travel Form → AI streaming → itinerary board → map view*
 
-## Place Search Behavior
-
-| Scenario | Search Center | Radius |
-|----------|---------------|--------|
-| Hotel + Neighborhoods | Neighborhood coords | 1500m |
-| Neighborhoods only | Neighborhood coords | 1500m |
-| Hotel only | Hotel coords (geocoded) | Config default |
-| Neither | City center | Config default |
-
-Neighborhoods always take priority — when selected, the hotel location is ignored for place queries.
-
 ## Features
 
 - **Vibe-based planning** — set budget, pace, food style, interests, and transport mode; the system handles place selection.
@@ -146,6 +135,15 @@ Options: `Walk` · `Metro` · `Mix`
 Optional multi-select, loaded per city.
 
 When neighborhoods are selected, the search strategy changes entirely: instead of one city-wide Foursquare search, the planner fetches candidates from each neighborhood center with a tighter 1500m radius. Neighborhoods are then assigned to days using a greedy clustering algorithm, and the LLM receives these assignments as constraints.
+
+Neighborhoods always take priority over hotel location for place queries. The search center resolves as follows:
+
+| Scenario | Search Center | Radius |
+|----------|---------------|--------|
+| Hotel + Neighborhoods | Neighborhood coords | 1500m |
+| Neighborhoods only | Neighborhood coords | 1500m |
+| Hotel only | Hotel coords (geocoded) | Config default |
+| Neither | City center | Config default |
 
 ### Must-Visit Places
 
