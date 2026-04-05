@@ -29,9 +29,12 @@ type CityInfo struct {
 	Lng  float64
 }
 
-// NYC only for now; others added later.
 var Cities = map[string]CityInfo{
-	"nyc": {Name: "New York City", Lat: 40.7128, Lng: -74.0060},
+	"nyc":       {Name: "New York City", Lat: 40.7128, Lng: -74.0060},
+	"paris":     {Name: "Paris", Lat: 48.8566, Lng: 2.3522},
+	"tokyo":     {Name: "Tokyo", Lat: 35.6762, Lng: 139.6503},
+	"london":    {Name: "London", Lat: 51.5074, Lng: -0.1278},
+	"barcelona": {Name: "Barcelona", Lat: 41.3851, Lng: 2.1734},
 }
 
 // --- API Request / Response ---

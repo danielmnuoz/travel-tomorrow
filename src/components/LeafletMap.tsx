@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import L from "leaflet";
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
-import type { PlaceStop, DayOverlay } from "@/types/itinerary";
+import type { PlaceStop, DayOverlay, LatLng } from "@/types/itinerary";
 
 function makeIcon(color: string, number: number) {
   return L.divIcon({
@@ -38,12 +38,13 @@ function makeOverviewIcon(color: string, dayNumber: number) {
   });
 }
 
-function FitBounds({ stops }: { stops: PlaceStop[] }) {
+function FitBounds({ stops, cityCenter }: { stops: PlaceStop[]; cityCenter?: LatLng }) {
   const map = useMap();
 
   useEffect(() => {
     if (stops.length === 0) {
-      map.setView([40.7128, -74.006], 12);
+      const { lat, lng } = cityCenter ?? { lat: 40.7128, lng: -74.006 };
+      map.setView([lat, lng], 12);
     } else if (stops.length === 1) {
       map.setView([stops[0].latitude, stops[0].longitude], 15);
     } else {
@@ -52,7 +53,7 @@ function FitBounds({ stops }: { stops: PlaceStop[] }) {
       );
       map.fitBounds(bounds, { padding: [50, 50] });
     }
-  }, [map, stops]);
+  }, [map, stops, cityCenter]);
 
   return null;
 }
@@ -61,6 +62,7 @@ interface LeafletMapProps {
   stops: PlaceStop[];
   dayColor: string;
   allDays?: DayOverlay[];
+  cityCenter?: LatLng;
 }
 
 function fetchOSRMRoute(stops: PlaceStop[]): Promise<[number, number][]> {
@@ -151,17 +153,18 @@ function OverviewDayLayer({ day }: { day: DayOverlay }) {
   );
 }
 
-export default function LeafletMap({ stops, dayColor, allDays }: LeafletMapProps) {
+export default function LeafletMap({ stops, dayColor, allDays, cityCenter }: LeafletMapProps) {
   const isOverview = !!allDays;
 
   const allStops = isOverview
     ? allDays.flatMap((d) => d.stops)
     : stops;
 
+  const fallback = cityCenter ?? { lat: 40.7128, lng: -74.006 };
   const center: [number, number] =
     allStops.length > 0
       ? [allStops[0].latitude, allStops[0].longitude]
-      : [40.7128, -74.006];
+      : [fallback.lat, fallback.lng];
 
   return (
     <MapContainer
@@ -174,7 +177,7 @@ export default function LeafletMap({ stops, dayColor, allDays }: LeafletMapProps
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
-      <FitBounds stops={allStops} />
+      <FitBounds stops={allStops} cityCenter={cityCenter} />
 
       {isOverview
         ? allDays.map((day) => (

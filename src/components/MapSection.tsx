@@ -18,7 +18,7 @@ import {
 import MapWrapper from "@/components/MapWrapper";
 import RemapButton from "@/components/RemapButton";
 import type { DayPlan, DayOverlay, PlaceIcon, PlaceStop } from "@/types/itinerary";
-import { DAY_COLORS } from "@/constants/itinerary";
+import { DAY_COLORS, CITY_CENTERS } from "@/constants/itinerary";
 
 const iconMap: Record<PlaceIcon, LucideIcon> = {
   utensils: Utensils,
@@ -55,6 +55,7 @@ export default function MapSection({
   onBack,
 }: MapSectionProps) {
   const isOverview = selectedDayNumber === null;
+  const cityCenter = CITY_CENTERS[city] ?? CITY_CENTERS["nyc"];
 
   const allDaysOverlay = useMemo<DayOverlay[]>(() => {
     if (!isOverview) return [];
@@ -182,9 +183,9 @@ export default function MapSection({
         <div className="flex-1 relative min-h-0">
           <div className="absolute inset-0 p-2">
             {isOverview ? (
-              <MapWrapper stops={[]} allDays={allDaysOverlay} />
+              <MapWrapper stops={[]} allDays={allDaysOverlay} cityCenter={cityCenter} />
             ) : (
-              <MapWrapper stops={mapStops} dayColor={DAY_COLORS[(selectedDayNumber - 1) % DAY_COLORS.length]} />
+              <MapWrapper stops={mapStops} dayColor={DAY_COLORS[(selectedDayNumber - 1) % DAY_COLORS.length]} cityCenter={cityCenter} />
             )}
           </div>
           {!isOverview && mapDirty && <RemapButton onClick={onRemap} />}

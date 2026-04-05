@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { APIProvider, Map, AdvancedMarker, InfoWindow, useMap } from "@vis.gl/react-google-maps";
-import type { PlaceStop, DayOverlay } from "@/types/itinerary";
+import type { PlaceStop, DayOverlay, LatLng } from "@/types/itinerary";
 
 const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY ?? "";
 const MAP_ID = process.env.NEXT_PUBLIC_GOOGLE_MAP_ID ?? "DEMO_MAP_ID";
@@ -11,15 +11,16 @@ interface GoogleMapViewProps {
   stops: PlaceStop[];
   dayColor: string;
   allDays?: DayOverlay[];
+  cityCenter?: LatLng;
 }
 
-function FitBoundsController({ stops }: { stops: PlaceStop[] }) {
+function FitBoundsController({ stops, cityCenter }: { stops: PlaceStop[]; cityCenter?: LatLng }) {
   const map = useMap();
 
   useEffect(() => {
     if (!map) return;
     if (stops.length === 0) {
-      map.setCenter({ lat: 40.7128, lng: -74.006 });
+      map.setCenter(cityCenter ?? { lat: 40.7128, lng: -74.006 });
       map.setZoom(12);
     } else if (stops.length === 1) {
       map.setCenter({ lat: stops[0].latitude, lng: stops[0].longitude });
@@ -29,7 +30,7 @@ function FitBoundsController({ stops }: { stops: PlaceStop[] }) {
       stops.forEach((s) => bounds.extend({ lat: s.latitude, lng: s.longitude }));
       map.fitBounds(bounds, 50);
     }
-  }, [map, stops]);
+  }, [map, stops, cityCenter]);
 
   return null;
 }
@@ -214,15 +215,16 @@ function OverviewDayLayer({ day }: { day: DayOverlay }) {
   );
 }
 
-export default function GoogleMapView({ stops, dayColor, allDays }: GoogleMapViewProps) {
+export default function GoogleMapView({ stops, dayColor, allDays, cityCenter }: GoogleMapViewProps) {
   const isOverview = !!allDays;
 
   const allStops = isOverview ? allDays.flatMap((d) => d.stops) : stops;
 
+  const fallback = cityCenter ?? { lat: 40.7128, lng: -74.006 };
   const center =
     allStops.length > 0
       ? { lat: allStops[0].latitude, lng: allStops[0].longitude }
-      : { lat: 40.7128, lng: -74.006 };
+      : fallback;
 
   return (
     <APIProvider apiKey={API_KEY}>
@@ -234,7 +236,7 @@ export default function GoogleMapView({ stops, dayColor, allDays }: GoogleMapVie
         disableDefaultUI
         gestureHandling="greedy"
       >
-        <FitBoundsController stops={allStops} />
+        <FitBoundsController stops={allStops} cityCenter={cityCenter} />
         {isOverview
           ? allDays.map((day) => <OverviewDayLayer key={day.dayNumber} day={day} />)
           : <SingleDayLayer stops={stops} dayColor={dayColor} />
