@@ -35,7 +35,16 @@ type candidateForLLM struct {
 	Neighborhood string  `json:"neighborhood,omitempty"`
 }
 
-const neighborhoodSearchRadius = 1500 // meters — tighter radius for neighborhood-scoped searches
+func neighborhoodSearchRadiusByTransport(transport string) int {
+	switch transport {
+	case "walk":
+		return 2500
+	case "metro":
+		return 1500
+	default: // "mix" or unset
+		return 2000
+	}
+}
 
 type Planner struct {
 	places   model.PlaceSearcher
@@ -70,12 +79,12 @@ func (p *Planner) Plan(ctx context.Context, req model.ItineraryRequest) (*model.
 		}
 
 		var err error
-		candidates, err = p.fetchCandidatesForNeighborhoods(ctx, resolvedNeighborhoods, categoryIDs)
+		candidates, err = p.fetchCandidatesForNeighborhoods(ctx, resolvedNeighborhoods, categoryIDs, req.Transport)
 		if err != nil {
 			return nil, fmt.Errorf("fetch neighborhood candidates: %w", err)
 		}
 
-		neighborhoodGroups = groupNeighborhoods(resolvedNeighborhoods, req.Days)
+		neighborhoodGroups = groupNeighborhoods(resolvedNeighborhoods, req.Days, req.Pace)
 		log.Printf("planner: grouped %d neighborhoods into %d day-groups", len(resolvedNeighborhoods), len(neighborhoodGroups))
 	} else {
 		searchLat, searchLng := p.resolveSearchOrigin(ctx, req, city)
@@ -156,6 +165,9 @@ func (p *Planner) Plan(ctx context.Context, req model.ItineraryRequest) (*model.
 		systemPrompt += pinnedGroupPromptSuffix
 	}
 
+	// Append transport-aware geographic spread instructions
+	systemPrompt += transportPromptSuffix(req.Transport)
+
 	userPrompt, err := p.buildUserPrompt(shortlisted, req, neighborhoodGroups, pinnedGroups)
 	if err != nil {
 		return nil, fmt.Errorf("build user prompt: %w", err)
@@ -214,11 +226,11 @@ func (p *Planner) PlanStream(ctx context.Context, req model.ItineraryRequest, on
 			return nil, fmt.Errorf("no valid neighborhoods found for city %q", req.City)
 		}
 		var err error
-		candidates, err = p.fetchCandidatesForNeighborhoods(ctx, resolvedNeighborhoods, categoryIDs)
+		candidates, err = p.fetchCandidatesForNeighborhoods(ctx, resolvedNeighborhoods, categoryIDs, req.Transport)
 		if err != nil {
 			return nil, fmt.Errorf("fetch neighborhood candidates: %w", err)
 		}
-		neighborhoodGroups = groupNeighborhoods(resolvedNeighborhoods, req.Days)
+		neighborhoodGroups = groupNeighborhoods(resolvedNeighborhoods, req.Days, req.Pace)
 	} else {
 		searchLat, searchLng := p.resolveSearchOrigin(ctx, req, city)
 		var err error
@@ -291,6 +303,7 @@ func (p *Planner) PlanStream(ctx context.Context, req model.ItineraryRequest, on
 	if len(pinnedGroups) > 0 {
 		systemPrompt += pinnedGroupPromptSuffix
 	}
+	systemPrompt += transportPromptSuffix(req.Transport)
 
 	userPrompt, err := p.buildUserPrompt(shortlisted, req, neighborhoodGroups, pinnedGroups)
 	if err != nil {
@@ -757,7 +770,7 @@ func resolveNeighborhoods(citySlug string, slugs []string) []model.Neighborhood 
 
 // fetchCandidatesForNeighborhoods calls fetchCandidates once per neighborhood center
 // with a tighter radius, tags each candidate with its source neighborhood, and deduplicates.
-func (p *Planner) fetchCandidatesForNeighborhoods(ctx context.Context, neighborhoods []model.Neighborhood, categoryIDs []string) ([]model.Candidate, error) {
+func (p *Planner) fetchCandidatesForNeighborhoods(ctx context.Context, neighborhoods []model.Neighborhood, categoryIDs []string, transport string) ([]model.Candidate, error) {
 	type result struct {
 		candidates []model.Candidate
 		hood       model.Neighborhood
@@ -766,12 +779,13 @@ func (p *Planner) fetchCandidatesForNeighborhoods(ctx context.Context, neighborh
 
 	results := make([]result, len(neighborhoods))
 	var wg sync.WaitGroup
+	radius := neighborhoodSearchRadiusByTransport(transport)
 
 	for i, hood := range neighborhoods {
 		wg.Add(1)
 		go func(idx int, h model.Neighborhood) {
 			defer wg.Done()
-			c, err := p.fetchCandidatesWithRadius(ctx, h.Lat, h.Lng, categoryIDs, neighborhoodSearchRadius)
+			c, err := p.fetchCandidatesWithRadius(ctx, h.Lat, h.Lng, categoryIDs, radius)
 			results[idx] = result{candidates: c, hood: h, err: err}
 		}(i, hood)
 	}
@@ -851,9 +865,10 @@ func (p *Planner) fetchCandidatesWithRadius(ctx context.Context, lat, lng float6
 }
 
 // groupNeighborhoods assigns neighborhoods to days.
-// If neighborhoods <= days: one per day, remaining days are unconstrained.
-// If neighborhoods > days: greedy nearest-neighbor merge until we have `days` groups.
-func groupNeighborhoods(neighborhoods []model.Neighborhood, days int) [][]model.Neighborhood {
+// For packed pace (>=4), it targets fewer groups so each day covers more ground.
+// For relaxed pace, it keeps 1 neighborhood per day when possible.
+// If neighborhoods > target groups: greedy nearest-neighbor merge until we fit.
+func groupNeighborhoods(neighborhoods []model.Neighborhood, days int, pace int) [][]model.Neighborhood {
 	if len(neighborhoods) == 0 {
 		return nil
 	}
@@ -864,9 +879,22 @@ func groupNeighborhoods(neighborhoods []model.Neighborhood, days int) [][]model.
 		groups[i] = []model.Neighborhood{n}
 	}
 
-	// Merge closest groups until we have at most `days` groups
-	for len(groups) > days {
-		// Find the two closest groups
+	// Determine target number of groups.
+	// For packed pace, we want fewer groups (more neighborhoods per day).
+	targetGroups := days
+	if pace >= 4 && len(neighborhoods) > 1 {
+		// Packed: aim for ~half as many groups as days (at least 1).
+		// e.g., 4 days + 4 neighborhoods → 2 groups of 2 neighborhoods each.
+		// The other days get city-wide unconstrained stops.
+		targetGroups = max(1, days/2)
+		// But don't create more groups than neighborhoods
+		if targetGroups > len(neighborhoods) {
+			targetGroups = len(neighborhoods)
+		}
+	}
+
+	// Merge closest groups until we have at most targetGroups
+	for len(groups) > targetGroups {
 		minDist := math.MaxFloat64
 		mergeA, mergeB := 0, 1
 		for i := 0; i < len(groups); i++ {
@@ -878,7 +906,6 @@ func groupNeighborhoods(neighborhoods []model.Neighborhood, days int) [][]model.
 				}
 			}
 		}
-		// Merge B into A, remove B
 		groups[mergeA] = append(groups[mergeA], groups[mergeB]...)
 		groups = append(groups[:mergeB], groups[mergeB+1:]...)
 	}
@@ -898,6 +925,46 @@ func groupDistance(a, b []model.Neighborhood) float64 {
 		}
 	}
 	return minDist
+}
+
+// --- Transport-aware prompt helpers ---
+
+// transportPromptSuffix returns additional LLM instructions based on transport mode.
+func transportPromptSuffix(transport string) string {
+	switch transport {
+	case "walk":
+		return `
+
+Additional instructions for walking itineraries:
+- The user prefers to walk everywhere. Design each day as a long walking route, NOT a tight loop.
+- Stops should be spread across 2+ neighborhoods or areas, connected by walkable streets.
+- A packed walking day should cover 5-8 km of total walking distance between all stops.
+- Arrange stops in a logical geographic order (north-to-south, along a river, etc.) so the day flows naturally.
+- The journey between stops is part of the experience — pick routes through interesting streets and areas.
+- Avoid clustering all stops within a single small block or intersection.
+`
+	case "metro":
+		return `
+
+Additional instructions for metro/transit itineraries:
+- The user is happy to take public transit between areas.
+- Design each day with 2-3 DISTINCT clusters in DIFFERENT parts of the city.
+- Within each cluster, stops should be within walking distance of each other (under 800m apart).
+- But clusters themselves can be 3-8 km apart — connected by metro or bus.
+- Each cluster should have 2-4 stops grouped together.
+- This lets the traveler experience completely different city vibes in a single day.
+- Name the neighborhood field with all areas covered (e.g. "Montmartre & Le Marais").
+`
+	default: // "mix"
+		return `
+
+Additional instructions for mixed transport itineraries:
+- The user combines walking and public transit.
+- Start the day with a walkable stretch across a neighborhood or two (3-4 nearby stops).
+- Then suggest a metro/bus hop to a different area for the remaining stops.
+- This gives the charm of walking discovery plus the reach of transit.
+`
+	}
 }
 
 // --- Pinned stop helpers ---

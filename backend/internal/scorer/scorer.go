@@ -240,6 +240,7 @@ func Shortlist(scored []model.ScoredCandidate, topN int) []model.ScoredCandidate
 }
 
 // adjustWeights returns scoring weights adjusted for user preferences and premium mode.
+// Transport controls geographic spread; packed pace (>=4) further boosts diversity.
 func adjustWeights(prefs model.ItineraryRequest, premium bool) weights {
 	if premium {
 		w := weights{
@@ -252,16 +253,40 @@ func adjustWeights(prefs model.ItineraryRequest, premium bool) weights {
 			popularity: premiumWPopular,
 			priceMatch: premiumWPrice,
 		}
-		// Transport == "walk" or Pace >= 4 (packed): boost distance + proximity.
-		if prefs.Transport == "walk" || prefs.Pace >= 4 {
-			w.distance = 0.25
-			w.proximity = 0.10
-			w.interest = 0.10
-			w.rating = 0.20
+		switch prefs.Transport {
+		case "walk":
+			w.distance = 0.15
+			w.proximity = 0.03
+			w.category = 0.10
+			w.interest = 0.17
+			w.rating = 0.25
 			w.popularity = 0.10
-			w.priceMatch = 0.10
-			w.category = 0.05
+			w.priceMatch = 0.15
+			w.time = 0.05
+		case "metro":
+			w.distance = 0.10
+			w.proximity = 0.02
+			w.category = 0.08
+			w.interest = 0.20
+			w.rating = 0.25
+			w.popularity = 0.10
+			w.priceMatch = 0.15
 			w.time = 0.10
+		default: // "mix"
+			w.distance = 0.15
+			w.proximity = 0.05
+			w.category = 0.07
+			w.interest = 0.18
+			w.rating = 0.25
+			w.popularity = 0.10
+			w.priceMatch = 0.15
+			w.time = 0.05
+		}
+		// Packed pace: shift weight from proximity toward interest diversity
+		if prefs.Pace >= 4 {
+			shift := 0.02
+			w.proximity = max(0, w.proximity-shift)
+			w.interest += shift
 		}
 		return w
 	}
@@ -274,13 +299,32 @@ func adjustWeights(prefs model.ItineraryRequest, premium bool) weights {
 		proximity: defaultWProximity,
 	}
 
-	// Transport == "walk" or Pace >= 4 (packed): prefer clustered stops.
-	if prefs.Transport == "walk" || prefs.Pace >= 4 {
-		w.distance = 0.45
-		w.category = 0.10
-		w.interest = 0.20
+	switch prefs.Transport {
+	case "walk":
+		w.distance = 0.25
+		w.category = 0.15
+		w.interest = 0.35
 		w.time = 0.10
 		w.proximity = 0.15
+	case "metro":
+		w.distance = 0.20
+		w.category = 0.15
+		w.interest = 0.35
+		w.time = 0.10
+		w.proximity = 0.20
+	default: // "mix"
+		w.distance = 0.25
+		w.category = 0.15
+		w.interest = 0.30
+		w.time = 0.10
+		w.proximity = 0.20
+	}
+
+	// Packed pace: shift weight from proximity toward interest diversity
+	if prefs.Pace >= 4 {
+		shift := 0.05
+		w.proximity = max(0, w.proximity-shift)
+		w.interest += shift
 	}
 
 	return w

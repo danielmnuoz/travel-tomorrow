@@ -112,14 +112,18 @@ func TestAdjustWeights_WalkMode(t *testing.T) {
 	prefs := model.ItineraryRequest{Transport: "walk"}
 	w := adjustWeights(prefs, false)
 
-	if w.distance != 0.45 {
-		t.Errorf("walk mode distance weight should be 0.45, got %.2f", w.distance)
+	if w.distance != 0.25 {
+		t.Errorf("walk mode distance weight should be 0.25, got %.2f", w.distance)
 	}
 	if w.proximity != 0.15 {
 		t.Errorf("walk mode proximity weight should be 0.15, got %.2f", w.proximity)
 	}
-	if w.interest != 0.20 {
-		t.Errorf("walk mode interest weight should be 0.20, got %.2f", w.interest)
+	if w.interest != 0.35 {
+		t.Errorf("walk mode interest weight should be 0.35, got %.2f", w.interest)
+	}
+	sum := w.distance + w.category + w.interest + w.time + w.proximity
+	if sum < 0.99 || sum > 1.01 {
+		t.Errorf("walk mode weights should sum to 1.0, got %.4f", sum)
 	}
 }
 
@@ -134,11 +138,20 @@ func TestAdjustWeights_Default(t *testing.T) {
 }
 
 func TestAdjustWeights_PackedPace(t *testing.T) {
+	// Packed pace with default transport ("mix") — pace shift moves 0.05 from proximity to interest
 	prefs := model.ItineraryRequest{Pace: 4}
 	w := adjustWeights(prefs, false)
 
-	if w.distance != 0.45 {
-		t.Errorf("packed pace distance weight should be 0.45, got %.2f", w.distance)
+	const eps = 0.001
+	if w.proximity < 0.15-eps || w.proximity > 0.15+eps {
+		t.Errorf("packed pace proximity should be ~0.15, got %.4f", w.proximity)
+	}
+	if w.interest < 0.35-eps || w.interest > 0.35+eps {
+		t.Errorf("packed pace interest should be ~0.35, got %.4f", w.interest)
+	}
+	sum := w.distance + w.category + w.interest + w.time + w.proximity
+	if sum < 0.99 || sum > 1.01 {
+		t.Errorf("packed pace weights should sum to 1.0, got %.4f", sum)
 	}
 }
 
@@ -282,7 +295,10 @@ func TestAdjustWeights_PremiumWalk(t *testing.T) {
 	if sum < 0.99 || sum > 1.01 {
 		t.Errorf("premium walk weights should sum to 1.0, got %.4f", sum)
 	}
-	if w.distance != 0.25 {
-		t.Errorf("premium walk distance should be 0.25, got %.2f", w.distance)
+	if w.distance != 0.15 {
+		t.Errorf("premium walk distance should be 0.15, got %.2f", w.distance)
+	}
+	if w.proximity != 0.03 {
+		t.Errorf("premium walk proximity should be low (0.03), got %.2f", w.proximity)
 	}
 }
